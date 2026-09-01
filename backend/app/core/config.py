@@ -48,11 +48,6 @@ class Settings(BaseSettings):
     vector_db_path: Path = Field(...)
 
 
-        # Embeddings
-    embedding_model_name: str = Field(
-        default="sentence-transformers/all-MiniLM-L6-v2", min_length=1
-    )
-
 
     # HTTP / CORS
     cors_origins: list[str] = Field(
