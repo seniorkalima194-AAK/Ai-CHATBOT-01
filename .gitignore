@@ -81,3 +81,4 @@ Thumbs.db
 
 # Vite Build Cache Directory
 .vite/
+node_modules/
