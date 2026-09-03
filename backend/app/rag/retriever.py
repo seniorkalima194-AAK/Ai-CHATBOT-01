@@ -1,36 +1,28 @@
-# Placeholder: retrieval logic for fetching relevant context from the vector store.
-
+"""Read-side similarity retrieval for the local educational knowledge base."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-import chromadb
-from chromadb.config import Settings as ChromaSettings
+from typing import Any, Optional
 
 from app.core.config import settings
 from app.core.logging import logger
 from app.rag.embeddings import embed_query
+from vector_db.store import COLLECTION_NAME, load_records
 
-#hii hutumika kubeba matokeo ya utafutaji kwenye RAG pipeline 
+
 @dataclass
 class RetrievedChunk:
-    """One retrieved context chunk with source metadata."""
-
     text: str
     source: str
     score: float
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
-#hii hupokea swali la mtumiaji na kubadilisha kuwa embedding vector, 
+
 class Retriever:
-    """
-    Runs cosine similarity search against the persistent Chroma collection
-    and returns the top-k chunks together with their source metadata.
-    """
+    """Ranks locally stored normalized vectors using cosine similarity."""
 
-    COLLECTION_NAME = "educational_materials"
+    COLLECTION_NAME = COLLECTION_NAME
 
     def __init__(
         self,
@@ -39,21 +31,11 @@ class Retriever:
     ) -> None:
         self.vector_db_path = Path(vector_db_path or settings.vector_db_path)
         self.top_k = top_k if top_k is not None else settings.top_k
-
-        self._client = chromadb.PersistentClient(
-            path=str(self.vector_db_path),
-            settings=ChromaSettings(anonymized_telemetry=False),
-        )
-        self._collection = self._client.get_or_create_collection(
-            name=self.COLLECTION_NAME,
-            metadata={"hnsw:space": "cosine"},
-        )
-
         logger.info(
             "retriever_ready",
             path=str(self.vector_db_path),
             collection=self.COLLECTION_NAME,
-            document_count=self._collection.count(),
+            document_count=len(load_records()),
             top_k=self.top_k,
         )
 
@@ -61,58 +43,37 @@ class Retriever:
         self,
         question: str,
         top_k: Optional[int] = None,
-    ) -> List[RetrievedChunk]:
-        """
-        Embed the question and return the most similar chunks.
-
-        Each chunk carries:
-        - text
-        - source (filename / document title)
-        - similarity score (higher = better)
-        - original metadata
-        """
+    ) -> list[RetrievedChunk]:
         k = top_k if top_k is not None else self.top_k
         if k <= 0:
             return []
 
-        count = self._collection.count()
-        if count == 0:
+        records = load_records()
+        if not records:
             logger.warning("vector_store_empty", path=str(self.vector_db_path))
             return []
 
         query_embedding = embed_query(question)
 
-        results = self._collection.query(
-            query_embeddings=[query_embedding],
-            n_results=min(k, count),
-            include=["documents", "metadatas", "distances"],
-        )
-
-        documents = (results.get("documents") or [[]])[0]
-        metadatas = (results.get("metadatas") or [[]])[0]
-        distances = (results.get("distances") or [[]])[0]
-
-        chunks: List[RetrievedChunk] = []
-        for doc, meta, dist in zip(documents, metadatas, distances):
-            if not doc:
-                continue
-
-            # Chroma distance → similarity score (1.0 = perfect match)
-            score = 1.0 - float(dist) if dist is not None else 0.0
-            meta = meta or {}
-            source = (
-                meta.get("source")
-                or meta.get("filename")
-                or meta.get("document")
-                or "unknown"
+        def score(record: dict[str, Any]) -> float:
+            return sum(
+                left * right
+                for left, right in zip(query_embedding, record["embedding"])
             )
 
+        ranked = sorted(records, key=score, reverse=True)[:k]
+        chunks = []
+        for record in ranked:
+            document = str(record.get("document", "")).strip()
+            if not document:
+                continue
+            metadata = dict(record.get("metadata") or {})
             chunks.append(
                 RetrievedChunk(
-                    text=doc.strip(),
-                    source=str(source),
-                    score=score,
-                    metadata=dict(meta),
+                    text=document,
+                    source=str(metadata.get("source", "unknown")),
+                    score=score(record),
+                    metadata=metadata,
                 )
             )
 

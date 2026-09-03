@@ -18,6 +18,7 @@ class RAGResult:
     prompt: str
     chunks: List[RetrievedChunk]
     prompt_token_estimate: int
+    answer_mode: str
 
 #hii inaunganisha hatua zote za mfumo wa rag kwa pamoja kutoka swali la mwanafunzi hadi prompt ya mwisho
 class RAGPipeline:
@@ -49,7 +50,10 @@ class RAGPipeline:
 
         k = top_k if top_k is not None else self.top_k
         chunks = self.retriever.retrieve(question, top_k=k)
-        prompt = build_prompt(question, chunks)
+        pdf_grounded = bool(
+            chunks and chunks[0].score >= settings.similarity_threshold
+        )
+        prompt = build_prompt(question, chunks if pdf_grounded else [], pdf_grounded)
         token_est = estimate_prompt_tokens(prompt)
 
         logger.info(
@@ -58,6 +62,7 @@ class RAGPipeline:
             chunks_retrieved=len(chunks),
             prompt_chars=len(prompt),
             prompt_token_estimate=token_est,
+            answer_mode="pdf_grounded" if pdf_grounded else "general_knowledge",
         )
 
         if token_est > 6000:
@@ -72,6 +77,7 @@ class RAGPipeline:
             prompt=prompt,
             chunks=chunks,
             prompt_token_estimate=token_est,
+            answer_mode="pdf_grounded" if pdf_grounded else "general_knowledge",
         )
 
 

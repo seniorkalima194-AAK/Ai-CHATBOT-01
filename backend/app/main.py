@@ -8,6 +8,7 @@ from app.core.logging import logger
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.routes import chat_routes, health_routes
 
 
 app = FastAPI(title="Offline AI-Chatbot")
@@ -20,10 +21,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(health_routes.router, prefix="/api/v1", tags=["health"])
+app.include_router(chat_routes.router, prefix="/api/v1/chat", tags=["chat"])
+
 logger.info(
     "app_startup",
     environment=settings.environment,
-    model=settings.llm_model_name,
+    model=settings.ollama_model,
     chunk_size=settings.chunk_size,
     top_k=settings.top_k,
 )
