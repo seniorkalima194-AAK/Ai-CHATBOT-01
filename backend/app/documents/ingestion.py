@@ -6,19 +6,20 @@ import logging
 from app.documents.pdf_parser import extract_pdf
 from app.documents.cleaner import clean_text
 from app.documents.chunker import chunk_text
+from app.core.config import settings
 
 
 # --------------------------------------------------
 # CONFIGURATION
 # --------------------------------------------------
 
-RAW_DIR = Path("data/raw/educational_materials")
+RAW_DIR = settings.raw_documents_path
 
-PROCESSED_DIR = Path("data/processed")
+PROCESSED_DIR = settings.processed_documents_path
 
-CHUNK_SIZE = 500
+CHUNK_SIZE = settings.chunk_size
 
-CHUNK_OVERLAP = 50
+CHUNK_OVERLAP = settings.chunk_overlap
 
 
 # --------------------------------------------------
@@ -91,7 +92,7 @@ def process_pdf(pdf_path: Path) -> list[dict]:
                 }
             )
 
-            return processed_chunks
+    return processed_chunks
 
 
 # --------------------------------------------------
@@ -159,7 +160,7 @@ def ingest_documents():
             # Output filename
             output_file = (
                 PROCESSED_DIR
-                / f"{pdf_path.stem}.json"
+                / f"{pdf_path.stem}.jsonl"
             )
 
             # Save JSON
@@ -169,12 +170,8 @@ def ingest_documents():
                 encoding="utf-8",
             ) as file:
 
-                json.dump(
-                    chunks,
-                    file,
-                    ensure_ascii=False,
-                    indent=2,
-                )
+                for chunk in chunks:
+                    file.write(json.dumps(chunk, ensure_ascii=False) + "\n")
 
             logger.info(
                 "Successfully saved %s chunks -> %s",

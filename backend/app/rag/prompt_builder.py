@@ -22,6 +22,7 @@ SYSTEM_INSTRUCTION = (
 def build_prompt(
     question: str,
     chunks: List[RetrievedChunk],
+    pdf_grounded: bool = True,
     max_context_chars: int = 3500,
 ) -> str:
     """
@@ -30,6 +31,14 @@ def build_prompt(
     Explicitly instructs the model to stay inside the supplied context and to
     say "I don't know..." when the context is insufficient.
     """
+    if not pdf_grounded:
+        return (
+            "The available PDF material does not contain a sufficiently relevant "
+            "answer. Answer using your general knowledge. Be concise, state "
+            "uncertainty when appropriate, and do not claim that the answer came "
+            "from the PDF.\n\n"
+            f"STUDENT QUESTION:\n{question.strip()}\n\nANSWER:"
+        )
     if not chunks:
         context_block = "(No relevant learning material was found.)"
     else:

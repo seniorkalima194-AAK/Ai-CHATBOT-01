@@ -21,20 +21,20 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from app.core.config import BACKEND_DIR
+from app.core.config import settings
 from app.core.logging import logger
 from app.rag.embeddings import embed_batch, validate_dimension
-from app.schemas.vector_schema import Chunk, VectorRecord
-from vector_db.store import collection_count, upsert_records
+from app.schemas.vector_schema import Chunk
+from vector_db.store import collection_count, upsert_chunks
 
-PROCESSED_DIR = BACKEND_DIR / "data" / "processed"
+PROCESSED_DIR = settings.processed_documents_path
 UPSERT_BATCH_SIZE = 64
 
 
-def _chunk_id(chunk: Chunk) -> str:
+def _chunk_id(chunk: Chunk, chunk_index: int = 0) -> str:
     """Stable id from content — same chunk always maps to the same id."""
     digest = hashlib.sha256(
-        f"{chunk.source}|{chunk.page}|{chunk.text}".encode("utf-8")
+        f"{chunk.source}|{chunk.page}|{chunk_index}|{chunk.text}".encode("utf-8")
     ).hexdigest()
     return f"{chunk.source}::{chunk.page}::{digest[:16]}"
 
@@ -93,17 +93,15 @@ def build_index() -> None:
     for start in range(0, total, UPSERT_BATCH_SIZE):
         batch = chunks[start : start + UPSERT_BATCH_SIZE]
         vectors = embed_batch([c.text for c in batch])
-
-        records = [
-            VectorRecord(
-                id=_chunk_id(chunk),
-                embedding=vector,
-                document=chunk.text,
-                metadata={"source": chunk.source, "page": chunk.page},
-            )
-            for chunk, vector in zip(batch, vectors)
-        ]
-        upsert_records(records)
+        chunk_indices = list(range(start, start + len(batch)))
+        upsert_chunks(
+            ids=[_chunk_id(chunk, index) for chunk, index in zip(batch, chunk_indices)],
+            embeddings=vectors,
+            documents=[chunk.text for chunk in batch],
+            sources=[chunk.source for chunk in batch],
+            pages=[chunk.page for chunk in batch],
+            chunk_indices=chunk_indices,
+        )
         logger.info(
             "build_index_batch_upserted",
             start=start,

@@ -1,5 +1,5 @@
 # Request/response schemas for chat interactions.
-from typing import Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -35,3 +35,5 @@ class ChatResponse(BaseModel):
     """Response returned by the chatbot API."""
 
     answer: str = Field(..., description="The generated answer.")
+    answer_mode: Literal["pdf_grounded", "general_knowledge"]
+    source_chunks: list[dict[str, Any]] = Field(default_factory=list)

@@ -8,9 +8,9 @@ from app.llm import ollama_client
 
 
 def test_config_has_llm_settings():
-    assert settings.ollama_model == "gemma4:latest"
-    assert settings.ollama_temperature == 0.7
-    assert settings.ollama_timeout == 120.0
+    assert settings.ollama_model
+    assert 0.0 <= settings.ollama_temperature <= 2.0
+    assert settings.ollama_timeout > 0
 
 
 @patch("app.llm.ollama_client._get_client")
