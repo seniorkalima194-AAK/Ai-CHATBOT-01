@@ -1,12 +1,12 @@
 # Orchestration service for chat request handling.
-import logging
 from typing import Optional
 
+from app.core.logging import get_logger
 from app.llm.ollama_client import OllamaError
 from app.services.generation_service import generate_answer
 from app.services.retrieval_service import retrieve_context
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def chat(question: str, top_k: Optional[int] = None) -> str:
@@ -31,11 +31,12 @@ def chat(question: str, top_k: Optional[int] = None) -> str:
         return generate_answer(result.prompt)
 
     except OllamaError:
-        logger.exception("LLM generation failed for question: %s", question)
+        logger.exception("llm_generation_failed", question=question)
         return (
             "Sorry, I couldn't generate an answer right now. "
             "Please make sure the AI model (Ollama) is running and try again."
         )
 
     except ValueError as exc:
+        logger.warning("chat_value_error", question=question, error=str(exc))
         return str(exc)

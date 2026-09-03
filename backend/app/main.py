@@ -8,7 +8,7 @@ from app.core.logging import logger
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.api.routes import chat_routes
 
 app = FastAPI(title="Offline AI-Chatbot")
 
@@ -19,6 +19,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+#Register the chat API routes (POST "/" -> chat_endpoints) .
+
+app.include_router(chat_routes.router)
 
 logger.info(
     "app_startup",
