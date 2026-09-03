@@ -62,7 +62,7 @@ const ProfilePage = () => {
     <div className="min-h-screen bg-white">
 
       {/* ================= HEADER ================= */}
-      <header className="bg-purple-600 text-white px-5 py-5 rounded-b-3xl flex items-center gap-5">
+      <header className="bg-slate-300 text-black px-5 py-5 rounded-b-3xl flex items-center gap-5">
         
         <button className="hover:bg-purple-700 p-2 rounded-lg">
           <Menu size={30} />
