@@ -43,7 +43,7 @@ def build_prompt(
             total += len(piece) + 2
         context_block = "\n\n".join(parts)
 #hii ndio sehemu inayo kamilisha hii function
-        prompt = (
+    prompt = (
         f"{SYSTEM_INSTRUCTION}\n\n"
         f"CONTEXT:\n{context_block}\n\n"
         f"STUDENT QUESTION:\n{question.strip()}\n\n"
@@ -54,4 +54,6 @@ def build_prompt(
 
 def estimate_prompt_tokens(prompt: str) -> int:
     """Rough token estimate (~4 characters per token for English)."""
+    if not prompt:
+        return 1
     return max(1, len(prompt) // 4)

@@ -33,6 +33,23 @@ class Settings(BaseSettings):
     llm_model_name: str = Field(..., min_length=1)
     llm_temperature: float = Field(..., ge=0.0, le=2.0)
     llm_timeout_seconds: int = Field(default=60, gt=0)
+    ollama_host: str = Field(
+        default="http://localhost:11434",
+        validation_alias="OLLAMA_BASE_URL",
+        min_length=1,
+    )
+
+    @property
+    def ollama_model(self) -> str:
+        return self.llm_model_name
+
+    @property
+    def ollama_temperature(self) -> float:
+        return self.llm_temperature
+
+    @property
+    def ollama_timeout(self) -> float:
+        return float(self.llm_timeout_seconds)
 
     # RAG
     chunk_size: int = Field(..., gt=0)
