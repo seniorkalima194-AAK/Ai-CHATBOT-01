@@ -41,7 +41,7 @@ const ChatWindow = ({
         <div className="flex flex-col items-center justify-center py-20">
 
           <h1 className="text-2xl font-semibold mb-2">
-            How can I help you?
+            How can I help you? 
           </h1>
 
           <p className="text-gray-500 mb-6">
@@ -54,41 +54,41 @@ const ChatWindow = ({
             <button
               type="button"
               onClick={() =>
-                onButtonClick("Explain React to me")
+                onButtonClick("If you were me as a junior software developer what should you learn from the start")
               }
               className="border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-100 transition"
             >
-              Explain React
+              Computer software knowledge
             </button>
 
             <button
               type="button"
               onClick={() =>
-                onButtonClick("Help me write JavaScript code")
+                onButtonClick("justfy the term biology think as a genius")
               }
               className="border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-100 transition"
             >
-              Write JavaScript
+              what is biology
             </button>
 
             <button
               type="button"
               onClick={() =>
-                onButtonClick("Teach me TypeScript")
+                onButtonClick("Give me the mathematics exercises that had written according to my sysllabus of Tanzania but ask me first which level i am in so as you could answer better extract from the pdfs you know")
               }
               className="border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-100 transition"
             >
-              Learn TypeScript
+              Mathematics examination questions
             </button>
 
             <button
               type="button"
               onClick={() =>
-                onButtonClick("Help me build a React website")
+                onButtonClick("Elezea kuhusu historia ya  Kiswahili ")
               }
               className="border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-100 transition"
             >
-              Build a React website
+              Kiswahili
             </button>
 
           </div>
