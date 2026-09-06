@@ -1,12 +1,20 @@
 # Orchestration service for chat request handling.
 import logging
-from typing import Optional
+from dataclasses import dataclass
+from typing import Any, Optional
 
 from app.llm.ollama_client import OllamaError
 from app.services.generation_service import generate_answer
 from app.services.retrieval_service import retrieve_context
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ChatResult:
+    answer: str
+    answer_mode: str
+    source_chunks: list[dict[str, Any]]
 
 
 def chat(question: str, top_k: Optional[int] = None) -> str:
@@ -39,3 +47,24 @@ def chat(question: str, top_k: Optional[int] = None) -> str:
 
     except ValueError as exc:
         return str(exc)
+
+
+def chat_with_metadata(question: str, top_k: Optional[int] = None) -> ChatResult:
+    """Generate an answer plus transparent mode and PDF source information."""
+    if not question or not question.strip():
+        return ChatResult("Please ask a question.", "general_knowledge", [])
+    try:
+        result = retrieve_context(question, top_k=top_k)
+        answer = generate_answer(result.prompt)
+        sources = []
+        if result.answer_mode == "pdf_grounded":
+            sources = [
+                {"source": chunk.source, "page": chunk.metadata.get("page"), "score": chunk.score}
+                for chunk in result.chunks
+            ]
+        return ChatResult(answer, result.answer_mode, sources)
+    except OllamaError:
+        logger.exception("LLM generation failed for question: %s", question)
+        return ChatResult("Sorry, I couldn't generate an answer right now. Please make sure Ollama is running and try again.", "general_knowledge", [])
+    except (ValueError, RuntimeError) as exc:
+        return ChatResult(str(exc), "general_knowledge", [])
