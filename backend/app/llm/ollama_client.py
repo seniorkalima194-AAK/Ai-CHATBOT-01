@@ -1,5 +1,5 @@
 # Placeholder: client wrapper for the Ollama LLM integration.
-from typing import Any
+from typing import Any, Mapping, Sequence
 
 import ollama
 
@@ -123,3 +123,46 @@ def generate(
         raise OllamaConnectionError(
             f"Ollama request failed: {exc}"
         ) from exc
+
+
+def chat(messages: Sequence[Mapping[str, str]]) -> str:
+    """Send role-based messages through Ollama's native chat API.
+
+    Ollama applies the correct template for the configured model. This avoids
+    nesting Gemma control tokens inside another model template, which was the
+    source of malformed and hard-to-read responses.
+    """
+    client = _get_client()
+
+    try:
+        response: Any = client.chat(
+            model=settings.ollama_model,
+            messages=[dict(message) for message in messages],
+            # Gemma 4 otherwise returns its private reasoning in a separate
+            # field before generating the answer. Students need the answer,
+            # not the model's internal working.
+            think=False,
+            options={"temperature": settings.ollama_temperature},
+        )
+        message = getattr(response, "message", None)
+        if message is None and isinstance(response, Mapping):
+            message = response.get("message")
+        content = getattr(message, "content", None)
+        if content is None and isinstance(message, Mapping):
+            content = message.get("content")
+        if not isinstance(content, str) or not content.strip():
+            raise OllamaConnectionError("Ollama returned an empty chat response")
+        return content
+
+    except ollama.ResponseError as exc:
+        if getattr(exc, "status_code", None) == 404:
+            raise OllamaModelNotFoundError(
+                f"Model not pulled: {settings.ollama_model}"
+            ) from exc
+        raise OllamaConnectionError(f"Ollama request failed: {exc}") from exc
+    except TimeoutError as exc:
+        raise OllamaTimeoutError("Ollama request timed out") from exc
+    except OllamaError:
+        raise
+    except Exception as exc:
+        raise OllamaConnectionError(f"Ollama request failed: {exc}") from exc
