@@ -24,7 +24,9 @@ class Settings(BaseSettings):
 
     # Local LLM (Ollama)
     ollama_host: str = "http://localhost:11434"
-    ollama_model: str = Field(..., min_length=1)
+    # Matches the locally installed model and keeps a fresh checkout runnable.
+    # It can still be overridden with OLLAMA_MODEL in backend/.env.
+    ollama_model: str = Field(default="gemma4:latest", min_length=1)
     ollama_temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     ollama_timeout: float = Field(default=120.0, gt=0)
 
@@ -36,15 +38,18 @@ class Settings(BaseSettings):
     chunk_overlap: int = Field(default=50, ge=0)
     top_k: int = Field(default=5, ge=1, le=20)
     similarity_threshold: float = Field(default=0.50, ge=-1.0, le=1.0)
+    document_scan_interval_seconds: float = Field(default=60.0, ge=10.0, le=3600.0)
 
-    # Chroma data is deliberately not stored beside Python source files.
-    raw_documents_path: Path = DATA_DIR / "raw" / "educational_materials"
+    # PDFs in this folder (including nested folders) are indexed automatically.
+    # Keeping it at the backend root makes it easy for teachers to add books.
+    books_path: Path = BACKEND_DIR / "Books"
     processed_documents_path: Path = DATA_DIR / "processed"
     vector_db_path: Path = DATA_DIR / "chroma"
 
     cors_origins: list[str] = Field(
-        default_factory=lambda: ["http://localhost:5173"]
+        default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
     )
+
     environment: str = Field(default="development", min_length=1)
 
     @model_validator(mode="after")

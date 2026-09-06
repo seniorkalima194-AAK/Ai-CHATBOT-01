@@ -49,6 +49,12 @@ env/
 # Data & Models
 backend/data/raw/**
 backend/data/processed/**
+!backend/data/raw/educational_materials/
+!backend/data/raw/educational_materials/.gitkeep
+# Textbooks are local learning content, not source code. The existing sample
+# textbook remains tracked, while future additions are kept out of Git.
+backend/Books/**
+!backend/Books/.gitkeep
 
 
 *.pkl
@@ -69,16 +75,4 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
-
-
-
-# Local Environment Variables & Secrets
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Vite Build Cache Directory
-.vite/
-node_modules/
+node_modules

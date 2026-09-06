@@ -129,10 +129,10 @@ const ChatGPTSidebar = () => {
         <div className="p-3 border-t border-[#2f2f2f] flex flex-col gap-1 bg-[#171717]">
           {!isCollapsed ? (
             <>
-              <button className="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-300 hover:bg-[#212121] rounded-lg transition-colors">
+              <Link to="/settings" className="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-300 hover:bg-[#212121] rounded-lg transition-colors">
                 <Settings size={16} />
                 <span>Settings</span>
-              </button>
+              </Link>
               <div className="flex items-center justify-between w-full px-3 py-2 mt-1 rounded-lg hover:bg-[#212121] transition-colors cursor-pointer">
                 <div className="flex items-center gap-3">
                   <div className="w-6 h-6 rounded-full bg-white text-black to-blue-500 flex items-center justify-center text-[11px] font-bold">

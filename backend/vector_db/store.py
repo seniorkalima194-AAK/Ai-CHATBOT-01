@@ -1,133 +1,101 @@
+"""Persistent JSON vector store used by the local RAG pipeline.
+
+The checked-in biology index lives at ``data/chroma/educational_materials.json``.
+Keeping the reader and writer on that same file is essential: otherwise newly
+indexed books are written to one store while questions are searched in another.
 """
-vector_db/store.py
-
-Owns the Chroma persistent client and collection, and write-side
-operations (upsert / count / reset) only.
-
-Scope boundary (per issue #6, explicitly): similarity search / querying
-belongs to rag/retriever.py, NOT here. This module never calls
-`.query()`. If you find yourself adding a search function to this file,
-that's scope creep back into the retrieval module's job.
-"""
-
 from __future__ import annotations
 
-import hashlib
+import json
 import os
-from pathlib import Path
 from typing import Any, Sequence
 
-import chromadb
+from app.core.config import settings
 
-try:
-    from chromadb.api.models.Collection import Collection
-except ImportError:
-    # chromadb has moved this internal path across versions before.
-    # Only used for type hints — falling back to Any keeps this module
-    # importable even if that internal path changes again. This is the
-    # exact kind of version fragility flagged earlier: pin chromadb's
-    # version in requirements.txt, don't rely on this fallback silently
-    # covering for an upgrade you didn't test.
-    Collection = Any  # type: ignore
 
-# --------------------------------------------------------------------------
-# Configuration
-# --------------------------------------------------------------------------
-
-# DESIGN DECISION — confirm or override:
-# Persisted Chroma data (sqlite + parquet index files) lives in a
-# subdirectory, NOT directly in vector_db/ next to this .py file. Reasons:
-#   1. .gitignore stays simple — ignore chroma_data/ wholesale, store.py
-#      (source code) still gets committed normally.
-#   2. Chroma writes many binary files; mixing them with tracked source
-#      files in the same dir is a mess to review in PRs.
-# If your issue literally meant "the Chroma persist path IS vector_db/",
-# override with the VECTOR_DB_PATH env var — don't just edit this constant
-# and lose the override mechanism.
-DEFAULT_PERSIST_DIR = Path(__file__).resolve().parent / "chroma_data"
-PERSIST_DIR = Path(os.environ.get("VECTOR_DB_PATH", str(DEFAULT_PERSIST_DIR)))
-
-COLLECTION_NAME = "course_materials"
-
-# all-MiniLM-L6-v2 output size. embeddings.py is the source of truth for
-# the actual model; this constant exists ONLY so a dimension mismatch
-# fails loudly and immediately here, instead of surfacing later as a
-# cryptic Chroma internal error or — worse — silently degraded retrieval.
+COLLECTION_NAME = "educational_materials"
 EXPECTED_DIM = 384
+INDEX_FILE = settings.vector_db_path / f"{COLLECTION_NAME}.json"
 
 
-# --------------------------------------------------------------------------
-# Client / collection
-# --------------------------------------------------------------------------
+def _load() -> dict[str, dict[str, Any]]:
+    """Load the complete local index, returning an empty index when absent."""
+    if not INDEX_FILE.exists():
+        return {}
 
-_client: chromadb.PersistentClient | None = None
+    with INDEX_FILE.open("r", encoding="utf-8") as file:
+        records = json.load(file)
 
-
-def get_client() -> chromadb.PersistentClient:
-    """Singleton persistent Chroma client rooted at PERSIST_DIR."""
-    global _client
-    if _client is None:
-        PERSIST_DIR.mkdir(parents=True, exist_ok=True)
-        _client = chromadb.PersistentClient(path=str(PERSIST_DIR))
-    return _client
+    if not isinstance(records, dict):
+        raise ValueError(f"Invalid vector index format: {INDEX_FILE}")
+    return records
 
 
-def get_collection() -> Collection:
-    """
-    Get or create the collection used for course-material chunks.
-
-    embedding_function=None is deliberate, not an oversight: embeddings.py
-    owns the model (all-MiniLM-L6-v2) and passes vectors in explicitly on
-    every write. If this collection were created WITHOUT that override,
-    Chroma falls back to its own default embedding function on first use —
-    which downloads a different local model the first time it's called.
-    That breaks the offline guarantee for a machine that's never had
-    embeddings.py's model cached, and it means you now have two disagreeing
-    embedding spaces in one project. Do not remove this argument.
-
-    hnsw:space=cosine is set explicitly rather than left as Chroma's
-    default — confirm this matches whatever similarity metric
-    retriever.py assumes when it queries this collection. A mismatch
-    between what's set here and what retriever.py expects is a silent
-    relevance bug, not a crash.
-    """
-    client = get_client()
-    return client.get_or_create_collection(
-        name=COLLECTION_NAME,
-        embedding_function=None,
-        metadata={"hnsw:space": "cosine"},
-    )
+def load_records() -> list[dict[str, Any]]:
+    """Return records for read-side cosine-similarity retrieval."""
+    return list(_load().values())
 
 
-# --------------------------------------------------------------------------
-# ID scheme — this IS the idempotency requirement from the issue
-# --------------------------------------------------------------------------
+def _validate_chunks(
+    ids: Sequence[str],
+    embeddings: Sequence[Sequence[float]],
+    documents: Sequence[str],
+    sources: Sequence[str],
+    pages: Sequence[int],
+    chunk_indices: Sequence[int],
+) -> None:
+    lengths = {
+        "ids": len(ids),
+        "embeddings": len(embeddings),
+        "documents": len(documents),
+        "sources": len(sources),
+        "pages": len(pages),
+        "chunk_indices": len(chunk_indices),
+    }
+    if len(set(lengths.values())) != 1:
+        raise ValueError(f"Mismatched batch lengths: {lengths}")
 
-def make_chunk_id(source: str, page: int, chunk_index: int) -> str:
-    """
-    Deterministic ID for one chunk: composite of (source, page,
-    chunk_index) — deliberately NOT a hash of the chunk text.
-
-    Hashing text alone collides whenever two different chunks share
-    boilerplate (headers, footers, repeated formulas across a syllabus).
-    source+page alone collides whenever a page produces more than one
-    chunk, which it will for any chunk size smaller than a full page.
-
-    This ID is what makes build_index.py idempotent: re-running it on the
-    same source material produces the same IDs, so upsert() overwrites in
-    place instead of duplicating. It stops being stable only if the
-    chunking logic itself changes (different chunk_size/overlap producing
-    a different chunk_index for the same text) — that's expected; changing
-    the chunking strategy SHOULD be treated as a fresh index, not a
-    seamless re-run.
-    """
-    raw = f"{source}::{page}::{chunk_index}"
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+    for identifier, vector in zip(ids, embeddings):
+        if len(vector) != EXPECTED_DIM:
+            raise ValueError(
+                f"Embedding {identifier} has {len(vector)} dimensions; "
+                f"expected {EXPECTED_DIM}."
+            )
 
 
-# --------------------------------------------------------------------------
-# Write operations
-# --------------------------------------------------------------------------
+def _upsert_into(
+    records: dict[str, dict[str, Any]],
+    ids: Sequence[str],
+    embeddings: Sequence[Sequence[float]],
+    documents: Sequence[str],
+    sources: Sequence[str],
+    pages: Sequence[int],
+    chunk_indices: Sequence[int],
+) -> None:
+    """Apply validated chunks to an in-memory index."""
+    for identifier, vector, document, source, page, chunk_index in zip(
+        ids, embeddings, documents, sources, pages, chunk_indices
+    ):
+        records[identifier] = {
+            "id": identifier,
+            "embedding": list(vector),
+            "document": str(document),
+            "metadata": {
+                "source": str(source),
+                "page": int(page),
+                "chunk_index": int(chunk_index),
+            },
+        }
+
+
+def _write(records: dict[str, dict[str, Any]]) -> None:
+    """Atomically replace the index so readers never see a partial update."""
+    INDEX_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temporary_file = INDEX_FILE.with_suffix(f".{os.getpid()}.tmp")
+    with temporary_file.open("w", encoding="utf-8") as file:
+        json.dump(records, file, ensure_ascii=False)
+    os.replace(temporary_file, INDEX_FILE)
+
 
 def upsert_chunks(
     ids: Sequence[str],
@@ -137,97 +105,74 @@ def upsert_chunks(
     pages: Sequence[int],
     chunk_indices: Sequence[int],
 ) -> None:
+    """Insert or replace chunks without creating duplicates on re-indexing."""
+    _validate_chunks(ids, embeddings, documents, sources, pages, chunk_indices)
+
+    records = _load()
+    _upsert_into(records, ids, embeddings, documents, sources, pages, chunk_indices)
+    _write(records)
+
+
+def replace_source_chunks(
+    source: str,
+    ids: Sequence[str],
+    embeddings: Sequence[Sequence[float]],
+    documents: Sequence[str],
+    pages: Sequence[int],
+    chunk_indices: Sequence[int],
+) -> None:
+    """Replace one textbook's chunks as one atomic index update.
+
+    This prevents duplicate answers when a teacher uploads a corrected version
+    of a PDF with the same name.
     """
-    Upsert (never add) a batch of chunks.
+    sources = [source] * len(ids)
+    _validate_chunks(ids, embeddings, documents, sources, pages, chunk_indices)
 
-    Using upsert instead of add is the actual mechanism behind the
-    "re-running should not duplicate" acceptance criterion — it isn't
-    handled anywhere else, so it has to be handled here.
-
-    chunk_index is stored as its own metadata field (not just folded into
-    the ID) so retriever.py can reconstruct which specific passage on a
-    page was matched, not just which page — the issue's stated schema
-    (vector + text + source + page) under-specifies this; two chunks on
-    the same page are otherwise indistinguishable in the returned
-    metadata.
-
-    All arguments must be equal length; raises ValueError immediately on
-    mismatch or on any embedding whose dimension isn't EXPECTED_DIM,
-    rather than letting a malformed batch fail deep inside Chroma with a
-    less diagnosable error.
-    """
-    n = len(ids)
-    lengths = {
-        "ids": n,
-        "embeddings": len(embeddings),
-        "documents": len(documents),
-        "sources": len(sources),
-        "pages": len(pages),
-        "chunk_indices": len(chunk_indices),
+    records = {
+        identifier: record
+        for identifier, record in _load().items()
+        if str((record.get("metadata") or {}).get("source")) != source
     }
-    if len(set(lengths.values())) != 1:
-        raise ValueError(f"Mismatched batch lengths: {lengths}")
-    if n == 0:
-        return
-
-    for i, vec in enumerate(embeddings):
-        if len(vec) != EXPECTED_DIM:
-            raise ValueError(
-                f"Embedding at batch index {i} has dimension {len(vec)}, "
-                f"expected {EXPECTED_DIM}. Check embeddings.py is still "
-                f"using all-MiniLM-L6-v2 and hasn't been swapped for a "
-                f"different model without updating this constant."
-            )
-
-    metadatas = [
-        {"source": src, "page": page, "chunk_index": idx}
-        for src, page, idx in zip(sources, pages, chunk_indices)
-    ]
-
-    collection = get_collection()
-    collection.upsert(
-        ids=list(ids),
-        embeddings=[list(e) for e in embeddings],
-        documents=list(documents),
-        metadatas=metadatas,
-    )
+    _upsert_into(records, ids, embeddings, documents, sources, pages, chunk_indices)
+    _write(records)
 
 
-# --------------------------------------------------------------------------
-# Introspection — for build_index.py logging and idempotency tests
-# --------------------------------------------------------------------------
+def remove_source_chunks(source: str) -> int:
+    """Remove every indexed passage belonging to one textbook source."""
+    records = _load()
+    remaining_records = {
+        identifier: record
+        for identifier, record in records.items()
+        if str((record.get("metadata") or {}).get("source")) != source
+    }
+    removed_count = len(records) - len(remaining_records)
+    if removed_count:
+        _write(remaining_records)
+    return removed_count
+
 
 def count() -> int:
-    """Chunks currently stored. Log this before and after build_index.py
-    runs — the acceptance criterion is that a re-run leaves this number
-    unchanged, so make that provable, not just assumed."""
-    return get_collection().count()
+    """Return the number of indexed chunks."""
+    return len(_load())
+
+
+def collection_count() -> int:
+    """Compatibility name used by the index-building script."""
+    return count()
+
+
+def index_summary() -> dict[str, int]:
+    """Return lightweight counts for the document-management API."""
+    records = _load()
+    sources = {
+        str((record.get("metadata") or {}).get("source", "unknown"))
+        for record in records.values()
+    }
+    return {"chunks": len(records), "sources": len(sources)}
 
 
 def reset() -> None:
-    """
-    Delete the entire collection. Destructive — for tests and deliberate
-    full rebuilds only (e.g. after a chunking-strategy change, per the
-    note in make_chunk_id). Does NOT delete PERSIST_DIR itself.
-    """
-    client = get_client()
-    client.delete_collection(name=COLLECTION_NAME)
-
-
-if __name__ == "__main__":
-    # Manual smoke test only — confirms the store can be created and
-    # written to without needing embeddings.py or a real PDF wired up yet.
-    # Not a substitute for tests/test_retrieval.py.
-    print(f"Persist dir: {PERSIST_DIR}")
-    dummy_vec = [0.0] * EXPECTED_DIM
-    cid = make_chunk_id("smoke_test.pdf", 1, 0)
-    upsert_chunks(
-        ids=[cid],
-        embeddings=[dummy_vec],
-        documents=["smoke test chunk"],
-        sources=["smoke_test.pdf"],
-        pages=[1],
-        chunk_indices=[0],
-    )
-    print(f"Collection count after smoke test upsert: {count()}")
-    print("Re-run this script — count should stay at 1, not grow to 2.")
+    """Delete the local JSON index. Intended only for a deliberate full rebuild."""
+    if INDEX_FILE.exists():
+        INDEX_FILE.unlink()
