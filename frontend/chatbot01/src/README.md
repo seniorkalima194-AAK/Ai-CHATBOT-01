@@ -561,17 +561,25 @@ Edit `.env` with your local configuration.
 
 ### 5. Add educational materials
 
-Place source documents inside:
+Place source documents (including folders of PDFs) inside:
 
 ```text
-backend/data/raw/educational_materials/
+backend/Books/
 ```
 
-### 6. Build the vector index
+The running backend detects new or changed PDFs automatically. Students can
+also open **Settings** and select **Upload book**; in the local setup, the
+selected PDF is copied to `backend/Books/uploads/` on the same computer and
+indexed immediately.
+
+### 6. Index the books (optional)
 
 ```bash
 python -m scripts.build_index
 ```
+
+The running backend already indexes new or changed PDFs in `backend/Books/`
+automatically. Run this command only when you want to force a full refresh.
 
 ### 7. Start FastAPI
 

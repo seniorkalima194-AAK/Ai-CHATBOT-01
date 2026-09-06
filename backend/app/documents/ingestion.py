@@ -1,197 +1,232 @@
-# Placeholder: ingestion workflow for processing and indexing documents.
-from pathlib import Path
+"""Automatic, repeatable ingestion of PDF textbooks into the local index."""
+from __future__ import annotations
+
+from collections import defaultdict
+from dataclasses import asdict, dataclass
+from hashlib import sha256
 import json
-import logging
+import os
+from pathlib import Path
+import threading
+from typing import Any
 
-from app.documents.pdf_parser import extract_pdf
-from app.documents.cleaner import clean_text
-from app.documents.chunker import chunk_text
 from app.core.config import settings
+from app.core.logging import get_logger
+from app.documents.chunker import chunk_text
+from app.documents.cleaner import clean_text
+from app.documents.pdf_parser import extract_pdf
+from app.rag.embeddings import embed_batch
+from vector_db.store import index_summary, replace_source_chunks
 
 
-# --------------------------------------------------
-# CONFIGURATION
-# --------------------------------------------------
+logger = get_logger(__name__)
 
-RAW_DIR = settings.raw_documents_path
-
+BOOKS_DIR = settings.books_path
 PROCESSED_DIR = settings.processed_documents_path
-
-CHUNK_SIZE = settings.chunk_size
-
-CHUNK_OVERLAP = settings.chunk_overlap
-
-
-# --------------------------------------------------
-# LOGGING
-# --------------------------------------------------
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(levelname)s: %(message)s",
-)
-
-logger = logging.getLogger(__name__)
+MANIFEST_PATH = PROCESSED_DIR / "ingestion_manifest.json"
+EMBEDDING_BATCH_SIZE = 64
+_ingestion_lock = threading.Lock()
 
 
-# --------------------------------------------------
-# PROCESS ONE PDF
-# --------------------------------------------------
+@dataclass(frozen=True)
+class DocumentIngestionResult:
+    """Outcome for one PDF supplied through the folder or upload API."""
 
-def process_pdf(pdf_path: Path) -> list[dict]:
+    source: str
+    status: str
+    chunks_indexed: int
+    message: str
 
-    logger.info(
-        "Processing document: %s",
-        pdf_path.name,
-    )
+    def as_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
-    pages = extract_pdf(pdf_path)
 
-    processed_chunks = []
+def process_pdf(pdf_path: Path, source: str | None = None) -> list[dict[str, Any]]:
+    """Extract, clean, and chunk one text-based PDF without indexing it yet."""
+    source = source or pdf_path.name
+    processed_chunks: list[dict[str, Any]] = []
 
-    for page in pages:
-
-        # ------------------------------------------
-        # CLEAN TEXT
-        # ------------------------------------------
-
-        cleaned = clean_text(
-            page["text"]
-        )
-
+    for page in extract_pdf(pdf_path):
+        cleaned = clean_text(page["text"])
         if not cleaned:
-            logger.warning(
-                "Empty page %s in %s",
-                page["page"],
-                page["source"],
-            )
-
             continue
 
-        # ------------------------------------------
-        # CREATE CHUNKS
-        # ------------------------------------------
-
-        chunks = chunk_text(
+        for text in chunk_text(
             cleaned,
-            chunk_size=CHUNK_SIZE,
-            overlap=CHUNK_OVERLAP,
-        )
-
-        # ------------------------------------------
-        # STORE CHUNKS
-        # ------------------------------------------
-
-        for chunk in chunks:
-
+            chunk_size=settings.chunk_size,
+            overlap=settings.chunk_overlap,
+        ):
             processed_chunks.append(
-                {
-                    "text": chunk,
-                    "source": page["source"],
-                    "page": page["page"],
-                }
+                {"text": text, "source": source, "page": page["page"]}
             )
 
-    return processed_chunks
+            return processed_chunks
 
 
-# --------------------------------------------------
-# PROCESS ALL PDFs
-# --------------------------------------------------
+def _load_manifest() -> dict[str, dict[str, Any]]:
+    if not MANIFEST_PATH.exists():
+        return {}
+    try:
+        with MANIFEST_PATH.open("r", encoding="utf-8") as file:
+            manifest = json.load(file)
+    except (OSError, json.JSONDecodeError):
+        logger.warning("ingestion_manifest_unreadable", path=str(MANIFEST_PATH))
+        return {}
+    return manifest if isinstance(manifest, dict) else {}
 
-def ingest_documents():
 
-    # Create output directory
-    PROCESSED_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
+def _save_manifest(manifest: dict[str, dict[str, Any]]) -> None:
+    MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = MANIFEST_PATH.with_suffix(f".{os.getpid()}.tmp")
+    with temporary_path.open("w", encoding="utf-8") as file:
+        json.dump(manifest, file, ensure_ascii=False, indent=2, sort_keys=True)
+    os.replace(temporary_path, MANIFEST_PATH)
+
+
+def _file_signature(pdf_path: Path) -> str:
+    """A quick change detector; PDF contents are read only when this changes."""
+    stat = pdf_path.stat()
+    return f"{stat.st_size}:{stat.st_mtime_ns}"
+
+
+def _chunk_id(source: str, page: int, chunk_index: int, text: str) -> str:
+    raw = f"{source}|{page}|{chunk_index}|{text}".encode("utf-8")
+    return sha256(raw).hexdigest()
+
+
+def _embed_and_replace(source: str, chunks: list[dict[str, Any]]) -> int:
+    texts = [str(chunk["text"]) for chunk in chunks]
+    embeddings: list[list[float]] = []
+    for start in range(0, len(texts), EMBEDDING_BATCH_SIZE):
+        embeddings.extend(embed_batch(texts[start : start + EMBEDDING_BATCH_SIZE]))
+
+    if len(embeddings) != len(chunks):
+        raise RuntimeError("The embedding model did not return one vector per chunk.")
+
+    page_indices: defaultdict[int, int] = defaultdict(int)
+    pages: list[int] = []
+    chunk_indices: list[int] = []
+    ids: list[str] = []
+    for chunk in chunks:
+        page = int(chunk["page"])
+        page_index = page_indices[page]
+        page_indices[page] += 1
+        pages.append(page)
+        chunk_indices.append(page_index)
+        ids.append(_chunk_id(source, page, page_index, str(chunk["text"])))
+
+    replace_source_chunks(
+        source=source,
+        ids=ids,
+        embeddings=embeddings,
+        documents=texts,
+        pages=pages,
+        chunk_indices=chunk_indices,
     )
+    return len(chunks)
 
-    # Check input directory
-    if not RAW_DIR.exists():
 
-        logger.error(
-            "Input directory does not exist: %s",
-            RAW_DIR,
+def _ingest_one(
+    pdf_path: Path,
+    source: str,
+    manifest: dict[str, dict[str, Any]],
+    *,
+    force: bool,
+) -> DocumentIngestionResult:
+    signature = _file_signature(pdf_path)
+    existing = manifest.get(source, {})
+    if not force and existing.get("signature") == signature:
+        return DocumentIngestionResult(
+            source, "skipped", int(existing.get("chunks_indexed", 0)), "Already indexed."
         )
 
-        return
+    try:
+        chunks = process_pdf(pdf_path, source=source)
+        if not chunks:
+            result = DocumentIngestionResult(
+                source,
+                "failed",
+                0,
+                "No readable text was found. This may be a scanned-image PDF.",
+            )
+        else:
+            chunk_count = _embed_and_replace(source, chunks)
+            result = DocumentIngestionResult(
+                source, "indexed", chunk_count, "Textbook is ready for questions."
+            )
+    except Exception as exc:
+        logger.exception("document_ingestion_failed", source=source)
+        result = DocumentIngestionResult(source, "failed", 0, str(exc))
 
-    # Find PDFs
-    pdf_files = list(
-        RAW_DIR.glob("*.pdf")
+    manifest[source] = {
+        "signature": signature,
+        "chunks_indexed": result.chunks_indexed,
+        "status": result.status,
+    }
+    return result
+
+
+def ingest_pdf(pdf_path: Path, source: str | None = None, *, force: bool = False) -> DocumentIngestionResult:
+    """Index a single PDF now, replacing old chunks when its name matches."""
+    pdf_path = Path(pdf_path)
+    source = source or pdf_path.name
+    with _ingestion_lock:
+        manifest = _load_manifest()
+        result = _ingest_one(pdf_path, source, manifest, force=force)
+        _save_manifest(manifest)
+        return result
+
+
+def _book_pdf_paths() -> list[Path]:
+    """Return PDFs in the shared Books library, including subfolders."""
+    BOOKS_DIR.mkdir(parents=True, exist_ok=True)
+    return sorted(
+        path for path in BOOKS_DIR.rglob("*") if path.is_file() and path.suffix.lower() == ".pdf"
     )
 
-    if not pdf_files:
 
-        logger.warning(
-            "No PDF files found in %s",
-            RAW_DIR,
-        )
+def ingest_pending_documents(*, force: bool = False) -> list[DocumentIngestionResult]:
+    """Index new or changed PDFs dropped anywhere in the ``Books`` folder.
 
-        return
+    Nested folders are supported. A file is only processed again when its size
+    or modification time changes, so a folder with hundreds of books is cheap
+    to scan after its initial import.
+    """
+    pdf_paths = _book_pdf_paths()
 
-    logger.info(
-        "Found %s PDF file(s)",
-        len(pdf_files),
-    )
-
-    # ------------------------------------------
-    # PROCESS EACH PDF
-    # ------------------------------------------
-
-    for pdf_path in pdf_files:
-
-        try:
-
-            chunks = process_pdf(
-                pdf_path
-            )
-
-            if not chunks:
-
-                logger.warning(
-                    "No chunks generated for %s",
-                    pdf_path.name,
-                )
-
-                continue
-
-            # Output filename
-            output_file = (
-                PROCESSED_DIR
-                / f"{pdf_path.stem}.jsonl"
-            )
-
-            # Save JSON
-            with open(
-                output_file,
-                "w",
-                encoding="utf-8",
-            ) as file:
-
-                for chunk in chunks:
-                    file.write(json.dumps(chunk, ensure_ascii=False) + "\n")
-
-            logger.info(
-                "Successfully saved %s chunks -> %s",
-                len(chunks),
-                output_file,
-            )
-
-        except Exception as error:
-
-            logger.error(
-                "Failed to process %s: %s",
-                pdf_path.name,
-                error,
-            )
+    with _ingestion_lock:
+        manifest = _load_manifest()
+        results = []
+        for pdf_path in pdf_paths:
+            source = pdf_path.relative_to(BOOKS_DIR).as_posix()
+            results.append(_ingest_one(pdf_path, source, manifest, force=force))
+            # A large school library can take a while to import. Persist each
+            # completed book so an interruption never loses all progress.
+            _save_manifest(manifest)
+        return results
 
 
-# --------------------------------------------------
-# MAIN
-# --------------------------------------------------
+def document_status() -> dict[str, int]:
+    """Return counts for administrators or the future management screen."""
+    pdf_paths = _book_pdf_paths()
+    sources = {path.relative_to(BOOKS_DIR).as_posix() for path in pdf_paths}
+    manifest = _load_manifest()
+    return {
+        **index_summary(),
+        "pdf_files": len(pdf_paths),
+        "indexed_files": sum(
+            1
+            for source in sources
+            if manifest.get(source, {}).get("status") == "indexed"
+        ),
+    }
+
+
+def ingest_documents() -> list[DocumentIngestionResult]:
+    """Backward-compatible command entry point that force-rebuilds the folder."""
+    return ingest_pending_documents(force=True)
+
 
 if __name__ == "__main__":
-
-    ingest_documents()
+    for report in ingest_pending_documents():
+        print(report.as_dict())

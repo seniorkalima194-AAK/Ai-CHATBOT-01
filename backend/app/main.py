@@ -1,17 +1,23 @@
-# Placeholder: FastAPI application entry point.
-
-
-# Import order matters: config first, so a bad .env crashes here —
-# at import time, before uvicorn even finishes booting the app.
-from app.core.config import settings
-from app.core.logging import logger
+"""FastAPI application entry point."""
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import chat_routes, health_routes
+
+from app.api.routes import chat_routes, document_routes, health_routes
+from app.core.config import settings
+from app.core.logging import logger
+from app.documents.watcher import start_document_watcher, stop_document_watcher
 
 
-app = FastAPI(title="Offline AI-Chatbot")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    start_document_watcher()
+    yield
+    stop_document_watcher()
+
+
+app = FastAPI(title="Offline AI-Chatbot", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,6 +29,9 @@ app.add_middleware(
 
 app.include_router(health_routes.router, prefix="/api/v1", tags=["health"])
 app.include_router(chat_routes.router, prefix="/api/v1/chat", tags=["chat"])
+app.include_router(
+    document_routes.router, prefix="/api/v1/documents", tags=["documents"]
+)
 
 logger.info(
     "app_startup",
