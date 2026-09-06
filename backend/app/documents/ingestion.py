@@ -16,7 +16,7 @@ from app.documents.chunker import chunk_text
 from app.documents.cleaner import clean_text
 from app.documents.pdf_parser import extract_pdf
 from app.rag.embeddings import embed_batch
-from vector_db.store import index_summary, replace_source_chunks
+from vector_db.store import index_summary, remove_source_chunks, replace_source_chunks
 
 
 logger = get_logger(__name__)
@@ -35,6 +35,18 @@ class DocumentIngestionResult:
     source: str
     status: str
     chunks_indexed: int
+    message: str
+
+    def as_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class DocumentDeletionResult:
+    """Outcome of removing a PDF that was uploaded through the student UI."""
+
+    source: str
+    chunks_removed: int
     message: str
 
     def as_dict(self) -> dict[str, Any]:
@@ -60,7 +72,7 @@ def process_pdf(pdf_path: Path, source: str | None = None) -> list[dict[str, Any
                 {"text": text, "source": source, "page": page["page"]}
             )
 
-            return processed_chunks
+    return processed_chunks
 
 
 def _load_manifest() -> dict[str, dict[str, Any]]:
@@ -175,6 +187,52 @@ def ingest_pdf(pdf_path: Path, source: str | None = None, *, force: bool = False
         result = _ingest_one(pdf_path, source, manifest, force=force)
         _save_manifest(manifest)
         return result
+
+
+def list_uploaded_documents() -> list[dict[str, Any]]:
+    """List PDFs saved by the student upload UI, never the shared library."""
+    upload_directory = BOOKS_DIR / "uploads"
+    if not upload_directory.exists():
+        return []
+
+    manifest = _load_manifest()
+    documents: list[dict[str, Any]] = []
+    for pdf_path in sorted(upload_directory.glob("*.pdf"), key=lambda path: path.name.lower()):
+        source = pdf_path.relative_to(BOOKS_DIR).as_posix()
+        record = manifest.get(source, {})
+        documents.append(
+            {
+                "filename": pdf_path.name,
+                "source": source,
+                "status": str(record.get("status", "pending")),
+                "chunks_indexed": int(record.get("chunks_indexed", 0)),
+            }
+        )
+    return documents
+
+
+def delete_uploaded_document(filename: str) -> DocumentDeletionResult:
+    """Delete one student-uploaded PDF and all knowledge indexed from it."""
+    upload_directory = BOOKS_DIR / "uploads"
+    pdf_path = upload_directory / filename
+    if pdf_path.parent != upload_directory or not pdf_path.is_file():
+        raise FileNotFoundError(filename)
+
+    source = pdf_path.relative_to(BOOKS_DIR).as_posix()
+    with _ingestion_lock:
+        # Delete the PDF before its vectors. If Windows has the file open, the
+        # deletion fails and the AI keeps the existing knowledge unchanged.
+        pdf_path.unlink()
+        chunks_removed = remove_source_chunks(source)
+        manifest = _load_manifest()
+        manifest.pop(source, None)
+        _save_manifest(manifest)
+
+    return DocumentDeletionResult(
+        source=source,
+        chunks_removed=chunks_removed,
+        message="The uploaded textbook and its searchable passages were removed.",
+    )
 
 
 def _book_pdf_paths() -> list[Path]:

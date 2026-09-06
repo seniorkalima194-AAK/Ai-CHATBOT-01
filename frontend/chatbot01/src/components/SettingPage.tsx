@@ -15,11 +15,16 @@ import {
   FileUp,
   LoaderCircle,
   RefreshCw,
+  FileText,
+  Trash2,
 } from "lucide-react";
 import {
+  deleteUploadedTextbook,
   getDocumentStatus,
+  getUploadedTextbooks,
   uploadTextbooks,
   type DocumentStatus,
+  type UploadedTextbook,
 } from "../services/chatService";
 
 const SettingsPage = () => {
@@ -29,15 +34,22 @@ const SettingsPage = () => {
   const [model, setModel] = useState("Default AI");
   const [name, setName] = useState("");
   const [bookStatus, setBookStatus] = useState<DocumentStatus | null>(null);
+  const [uploadedBooks, setUploadedBooks] = useState<UploadedTextbook[]>([]);
   const [bookMessage, setBookMessage] = useState("");
   const [bookError, setBookError] = useState("");
   const [isLoadingBooks, setIsLoadingBooks] = useState(false);
+  const [deletingBook, setDeletingBook] = useState<string | null>(null);
   const bookInputRef = useRef<HTMLInputElement>(null);
 
-  const refreshBookStatus = async () => {
+  const refreshBookLibrary = async () => {
     try {
       setBookError("");
-      setBookStatus(await getDocumentStatus());
+      const [status, uploads] = await Promise.all([
+        getDocumentStatus(),
+        getUploadedTextbooks(),
+      ]);
+      setBookStatus(status);
+      setUploadedBooks(uploads);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to reach the book library.";
       setBookError(`Book library is unavailable: ${message}`);
@@ -45,7 +57,7 @@ const SettingsPage = () => {
   };
 
   useEffect(() => {
-    void refreshBookStatus();
+    void refreshBookLibrary();
   }, []);
 
   const handleBookSelection = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -66,12 +78,35 @@ const SettingsPage = () => {
           failed.length ? ` ${failed.length} PDF${failed.length === 1 ? " could" : "s could"} not be read.` : ""
         }`,
       );
-      await refreshBookStatus();
+      await refreshBookLibrary();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to upload the selected PDF.";
       setBookError(`Upload failed: ${message}`);
     } finally {
       setIsLoadingBooks(false);
+    }
+  };
+
+  const handleDeleteUploadedBook = async (book: UploadedTextbook) => {
+    const confirmed = window.confirm(
+      `Remove "${book.filename}"? The AI will no longer use information from this PDF.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingBook(book.filename);
+    setBookError("");
+    setBookMessage("");
+    try {
+      const result = await deleteUploadedTextbook(book.filename);
+      setBookMessage(
+        `${book.filename} was removed from this device and ${result.chunks_removed} searchable passage${result.chunks_removed === 1 ? "" : "s"}.`,
+      );
+      await refreshBookLibrary();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to remove the uploaded PDF.";
+      setBookError(`Could not remove ${book.filename}: ${message}`);
+    } finally {
+      setDeletingBook(null);
     }
   };
 
@@ -189,13 +224,49 @@ const SettingsPage = () => {
             </button>
             <button
               type="button"
-              onClick={() => void refreshBookStatus()}
+              onClick={() => void refreshBookLibrary()}
               disabled={isLoadingBooks}
               className="flex items-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-medium transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <RefreshCw size={18} />
               Refresh library
             </button>
+          </div>
+
+          <div className="mt-5 border-t border-gray-200 pt-4">
+            <h3 className="font-medium">PDFs uploaded by you</h3>
+            {uploadedBooks.length === 0 ? (
+              <p className="mt-2 text-sm text-gray-500">No PDFs have been uploaded from this device yet.</p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {uploadedBooks.map((book) => (
+                  <li
+                    key={book.source}
+                    className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2"
+                  >
+                    <FileText size={18} className="shrink-0 text-gray-600" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-gray-800">{book.filename}</p>
+                      <p className="text-xs text-gray-500">
+                        {book.status === "indexed"
+                          ? `${book.chunks_indexed} searchable passage${book.chunks_indexed === 1 ? "" : "s"}`
+                          : book.status}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteUploadedBook(book)}
+                      disabled={deletingBook !== null || isLoadingBooks}
+                      className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label={`Remove ${book.filename}`}
+                    >
+                      {deletingBook === book.filename ? <LoaderCircle size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {bookMessage && <p className="mt-3 text-sm text-green-700">{bookMessage}</p>}

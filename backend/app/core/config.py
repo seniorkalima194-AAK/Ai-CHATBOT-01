@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     vector_db_path: Path = DATA_DIR / "chroma"
 
     cors_origins: list[str] = Field(
-        default_factory=lambda: ["http://localhost:5173"]
+        default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
     )
 
     environment: str = Field(default="development", min_length=1)

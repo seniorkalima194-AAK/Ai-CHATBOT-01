@@ -1,5 +1,7 @@
 const apiBaseUrl = (
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1"
+  // In development Vite forwards this path to the local backend. The same
+  // relative URL also works behind the production Docker reverse proxy.
+  import.meta.env.VITE_API_BASE_URL ?? "/api/v1"
 ).replace(/\/$/, "");
 
 export type AnswerMode = "pdf_grounded" | "general_knowledge";
@@ -24,8 +26,25 @@ export interface DocumentStatus {
   indexed_files: number;
 }
 
+export interface UploadedTextbook {
+  filename: string;
+  source: string;
+  status: string;
+  chunks_indexed: number;
+}
+
 interface TextbookUploadResponse {
   documents: TextbookUploadResult[];
+}
+
+interface UploadedTextbookResponse {
+  documents: UploadedTextbook[];
+}
+
+export interface TextbookDeletionResult {
+  source: string;
+  chunks_removed: number;
+  message: string;
 }
 
 async function errorMessage(response: Response): Promise<string> {
@@ -78,4 +97,24 @@ export async function getDocumentStatus(): Promise<DocumentStatus> {
     throw new Error(await errorMessage(response));
   }
   return response.json() as Promise<DocumentStatus>;
+}
+
+export async function getUploadedTextbooks(): Promise<UploadedTextbook[]> {
+  const response = await fetch(`${apiBaseUrl}/documents/uploads`);
+  if (!response.ok) {
+    throw new Error(await errorMessage(response));
+  }
+  const body = (await response.json()) as UploadedTextbookResponse;
+  return body.documents;
+}
+
+export async function deleteUploadedTextbook(filename: string): Promise<TextbookDeletionResult> {
+  const response = await fetch(
+    `${apiBaseUrl}/documents/uploads/${encodeURIComponent(filename)}`,
+    { method: "DELETE" },
+  );
+  if (!response.ok) {
+    throw new Error(await errorMessage(response));
+  }
+  return response.json() as Promise<TextbookDeletionResult>;
 }

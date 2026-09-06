@@ -20,3 +20,20 @@ class DocumentStatusResponse(BaseModel):
     sources: int = Field(ge=0)
     pdf_files: int = Field(ge=0)
     indexed_files: int = Field(ge=0)
+
+
+class UploadedDocumentResponse(BaseModel):
+    filename: str
+    source: str
+    status: str
+    chunks_indexed: int = Field(ge=0)
+
+
+class UploadedDocumentListResponse(BaseModel):
+    documents: list[UploadedDocumentResponse]
+
+
+class DocumentDeletionResponse(BaseModel):
+    source: str
+    chunks_removed: int = Field(ge=0)
+    message: str

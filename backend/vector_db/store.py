@@ -138,6 +138,20 @@ def replace_source_chunks(
     _write(records)
 
 
+def remove_source_chunks(source: str) -> int:
+    """Remove every indexed passage belonging to one textbook source."""
+    records = _load()
+    remaining_records = {
+        identifier: record
+        for identifier, record in records.items()
+        if str((record.get("metadata") or {}).get("source")) != source
+    }
+    removed_count = len(records) - len(remaining_records)
+    if removed_count:
+        _write(remaining_records)
+    return removed_count
+
+
 def count() -> int:
     """Return the number of indexed chunks."""
     return len(_load())

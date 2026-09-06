@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.api.routes import document_routes
-from app.documents.ingestion import DocumentIngestionResult
+from app.documents.ingestion import DocumentDeletionResult, DocumentIngestionResult
 from app.main import app
 
 
@@ -46,3 +46,25 @@ def test_upload_endpoint_rejects_non_pdf_files():
 
     assert response.status_code == 400
     assert "Only files" in response.json()["detail"]
+
+
+def test_delete_upload_endpoint_removes_student_uploaded_book(monkeypatch):
+    monkeypatch.setattr(
+        document_routes,
+        "delete_uploaded_document",
+        lambda filename: DocumentDeletionResult(
+            source=f"uploads/{filename}",
+            chunks_removed=4,
+            message="The uploaded textbook and its searchable passages were removed.",
+        ),
+    )
+
+    client = TestClient(app)
+    response = client.delete("/api/v1/documents/uploads/biology.pdf")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "source": "uploads/biology.pdf",
+        "chunks_removed": 4,
+        "message": "The uploaded textbook and its searchable passages were removed.",
+    }

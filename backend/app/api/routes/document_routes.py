@@ -8,11 +8,18 @@ from uuid import uuid4
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
 from app.core.config import settings
-from app.documents.ingestion import document_status, ingest_pdf
+from app.documents.ingestion import (
+    delete_uploaded_document,
+    document_status,
+    ingest_pdf,
+    list_uploaded_documents,
+)
 from app.schemas.document_schema import (
+    DocumentDeletionResponse,
     DocumentIngestionResponse,
     DocumentStatusResponse,
     DocumentUploadResponse,
+    UploadedDocumentListResponse,
 )
 
 
@@ -65,6 +72,12 @@ def get_document_status() -> DocumentStatusResponse:
     return DocumentStatusResponse(**document_status())
 
 
+@router.get("/uploads", response_model=UploadedDocumentListResponse)
+def get_uploaded_textbooks() -> UploadedDocumentListResponse:
+    """List books uploaded through the student interface on this device."""
+    return UploadedDocumentListResponse(documents=list_uploaded_documents())
+
+
 @router.post("/upload", response_model=DocumentUploadResponse)
 async def upload_textbooks(
     files: list[UploadFile] = File(..., description="One or more PDF textbooks."),
@@ -90,3 +103,23 @@ async def upload_textbooks(
         results.append(DocumentIngestionResponse(**result.as_dict()))
 
     return DocumentUploadResponse(documents=results)
+
+
+@router.delete("/uploads/{filename}", response_model=DocumentDeletionResponse)
+def delete_uploaded_textbook(filename: str) -> DocumentDeletionResponse:
+    """Remove a student-uploaded PDF and the knowledge indexed from it."""
+    safe_filename = _safe_pdf_filename(filename)
+    if safe_filename != filename:
+        raise HTTPException(status_code=400, detail="Invalid uploaded textbook name.")
+
+    try:
+        result = delete_uploaded_document(safe_filename)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Uploaded textbook was not found.") from None
+    except OSError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="The uploaded textbook could not be removed. Please close it and try again.",
+        ) from exc
+
+    return DocumentDeletionResponse(**result.as_dict())
