@@ -1,7 +1,7 @@
-
+import React from "react";
 import { useNotifications } from "../../context/NotificationContext";
 
-const NotificationPage = () => {
+const NotificationPage: React.FC = () => {
   const {
     notifications,
     unreadCount,
@@ -132,4 +132,3 @@ const NotificationPage = () => {
 };
 
 export default NotificationPage;
-
