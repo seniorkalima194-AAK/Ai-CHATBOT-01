@@ -9,7 +9,7 @@ from app.llm import ollama_client
 
 def test_config_has_llm_settings():
     assert settings.ollama_model == "gemma4:latest"
-    assert settings.ollama_temperature == 0.7
+    assert settings.ollama_temperature == 0.2
     assert settings.ollama_timeout == 120.0
 
 
@@ -93,35 +93,38 @@ def test_generate_timeout(mock_get_client):
     with pytest.raises(ollama_client.OllamaTimeoutError):
         ollama_client.generate("Hello")
 
-@patch("app.llm.gemma_client.ollama_generate")
-def test_gemma_generate_uses_stop_token(mock_generate):
-    mock_generate.return_value = "Hello there!"
+@patch("app.llm.gemma_client.ollama_chat")
+def test_gemma_generate_uses_native_ollama_chat_and_cleans_tokens(mock_chat):
+    mock_chat.return_value = "<think>private reasoning</think><start_of_turn>model\nHello there!<end_of_turn>"
 
-    gemma_client.generate(
+    answer = gemma_client.generate(
         "You are a helpful assistant.",
         "Say hello.",
     )
 
-    mock_generate.assert_called_once()
-
-    _, kwargs = mock_generate.call_args
-
-    assert kwargs["stop"] == ["<end_of_turn>"]
-
-
-@patch("app.llm.gemma_client.ollama_generate")
-def test_gemma_generate_builds_system_and_user_prompt(mock_generate):
-    mock_generate.return_value = "Hello"
-
-    gemma_client.generate(
-        "You are a helpful assistant.",
-        "Say hello.",
+    assert answer == "Hello there!"
+    mock_chat.assert_called_once_with(
+        [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Say hello."},
+        ]
     )
 
-    prompt = mock_generate.call_args.args[0]
 
-    assert "<start_of_turn>system" in prompt
-    assert "You are a helpful assistant." in prompt
-    assert "<start_of_turn>user" in prompt
-    assert "Say hello." in prompt
-    assert "<start_of_turn>model" in prompt
+@patch("app.llm.ollama_client._get_client")
+def test_chat_uses_ollama_role_messages(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.chat.return_value = MagicMock(message=MagicMock(content="Clear answer"))
+    mock_get_client.return_value = mock_client
+
+    answer = ollama_client.chat([
+        {"role": "system", "content": "Be clear."},
+        {"role": "user", "content": "What is biology?"},
+    ])
+
+    assert answer == "Clear answer"
+    assert mock_client.chat.call_args.kwargs["messages"] == [
+        {"role": "system", "content": "Be clear."},
+        {"role": "user", "content": "What is biology?"},
+    ]
+    assert mock_client.chat.call_args.kwargs["think"] is False

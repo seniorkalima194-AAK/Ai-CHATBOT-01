@@ -1,0 +1,4 @@
+chatbot01/node_modules/
+chatbot01/dist/
+chatbot01/.env*
+*.log
