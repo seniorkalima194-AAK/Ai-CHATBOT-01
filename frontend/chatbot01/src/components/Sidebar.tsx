@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import { 
-  MessageSquare, 
-  Plus, 
-  ChevronLeft, 
-  Trash2, 
+import {
+  MessageSquare,
+  Plus,
+  ChevronLeft,
+  Trash2,
   ExternalLink,
   Search,
-  X 
+  X,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
@@ -18,7 +18,7 @@ interface ChatItem {
 
 const ChatbotSidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>(""); 
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -30,43 +30,40 @@ const ChatbotSidebar: React.FC = () => {
     { id: "4", title: "Python API Data Parsing", path: "/c/4" },
   ]);
 
-  // Handler for deleting a chat item
   const handleDeleteChat = (
-    e: React.MouseEvent<HTMLButtonElement>, 
-    chat: ChatItem
+    e: React.MouseEvent<HTMLButtonElement>,
+    chat: ChatItem,
   ): void => {
     // Stop the click event from triggering Link navigation
     e.stopPropagation();
     e.preventDefault();
 
-    // 1. Remove the chat from state
     setChatHistory((prev) => prev.filter((item) => item.id !== chat.id));
 
-    // 2. Redirect to home/new chat if the deleted chat was currently open
     if (location.pathname === chat.path) {
       navigate("/");
     }
   };
 
-  // Filter history based on search query
   const filteredHistory = chatHistory.filter((chat) =>
-    chat.title.toLowerCase().includes(searchQuery.toLowerCase())
+    chat.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
-    <aside 
+    <aside
       className={`fixed top-0 left-0 h-screen bg-white text-gray-900
       transition-all duration-300 z-50 flex flex-col justify-between border-r border-[#2f2f2f]
       ${isCollapsed ? "w-0 md:w-16" : "w-64"}`}
     >
-      <div className={`flex flex-col h-full w-full ${isCollapsed ? "hidden md:flex" : "flex"}`}>
-        
+      <div
+        className={`flex flex-col h-full w-full ${isCollapsed ? "hidden md:flex" : "flex"}`}
+      >
         {/* Top Action Header */}
         <div className="p-3.5 flex flex-col gap-2">
           <div className="flex items-center justify-between gap-2">
             {!isCollapsed && (
-              <Link 
-                to={'/'} 
+              <Link
+                to={"/"}
                 className="flex-1 flex items-center justify-between px-3 py-2 border border-[#2f2f2f] rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
               >
                 <span className="flex items-center gap-2">
@@ -76,9 +73,9 @@ const ChatbotSidebar: React.FC = () => {
                 <Plus size={16} className="text-gray-400" />
               </Link>
             )}
-            
+
             {!isCollapsed && (
-              <button 
+              <button
                 onClick={() => setIsCollapsed(true)}
                 className="p-2 rounded-lg border border-[#2f2f2f] text-gray-400 hover:text-gray-900 hover:bg-gray-200 transition-colors"
                 aria-label="Collapse Sidebar"
@@ -88,7 +85,6 @@ const ChatbotSidebar: React.FC = () => {
             )}
           </div>
 
-          {/* Search Input */}
           {!isCollapsed && (
             <div className="relative flex items-center mt-1">
               <Search size={16} className="absolute left-3 text-gray-400" />
@@ -96,11 +92,13 @@ const ChatbotSidebar: React.FC = () => {
                 type="text"
                 placeholder="Search history..."
                 value={searchQuery}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setSearchQuery(e.target.value)
+                }
                 className="w-full pl-9 pr-8 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-gray-900 focus:bg-white text-gray-900 transition-all"
               />
               {searchQuery && (
-                <button 
+                <button
                   onClick={() => setSearchQuery("")}
                   className="absolute right-2.5 text-gray-400 hover:text-gray-600"
                 >
@@ -111,7 +109,6 @@ const ChatbotSidebar: React.FC = () => {
           )}
         </div>
 
-        {/* Scrollable Chat History */}
         <div className="flex-1 overflow-y-auto px-2 py-2 custom-scrollbar">
           {!isCollapsed && (
             <>
@@ -124,26 +121,25 @@ const ChatbotSidebar: React.FC = () => {
                   filteredHistory.map((chat) => {
                     const isActive = location.pathname === chat.path;
                     return (
-                      <div 
+                      <div
                         key={chat.id}
                         className={`group relative flex items-center justify-between rounded-lg text-sm px-3 py-2 transition-colors
                         ${isActive ? "bg-gray-900 text-white" : "hover:bg-gray-100 text-gray-800"}`}
                       >
-                        <Link 
-                          to={chat.path} 
+                        <Link
+                          to={chat.path}
                           className="flex items-center gap-2.5 truncate w-full pr-8"
                         >
-                          <MessageSquare 
-                            size={16} 
-                            className={`flex-shrink-0 ${isActive ? "text-white" : "text-gray-600 group-hover:text-gray-900"}`} 
+                          <MessageSquare
+                            size={16}
+                            className={`flex-shrink-0 ${isActive ? "text-white" : "text-gray-600 group-hover:text-gray-900"}`}
                           />
                           <span className="truncate text-[13px]">
                             {chat.title}
                           </span>
                         </Link>
-                        
-                        {/* Delete Button with z-10 priority */}
-                        <button 
+
+                        <button
                           type="button"
                           onClick={(e) => handleDeleteChat(e, chat)}
                           className="absolute right-2 z-10 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity"
@@ -164,7 +160,6 @@ const ChatbotSidebar: React.FC = () => {
           )}
         </div>
 
-        {/* Footer */}
         <div className="p-3 border-t border-[#2f2f2f] flex flex-col gap-1 bg-[#171717]">
           {!isCollapsed ? (
             <div>
@@ -178,7 +173,6 @@ const ChatbotSidebar: React.FC = () => {
             </div>
           )}
         </div>
-
       </div>
     </aside>
   );

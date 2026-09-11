@@ -17,7 +17,7 @@ const ProfilePage = () => {
   const [joinDate, setJoinDate] = useState("10/07/2030");
 
   const [profileImage, setProfileImage] = useState(
-    "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+    "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
   );
 
   const [isEditing, setIsEditing] = useState(false);
@@ -28,9 +28,7 @@ const ProfilePage = () => {
     fileInputRef.current?.click();
   };
 
-  const handleImageChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
     if (file) {
@@ -49,9 +47,7 @@ const ProfilePage = () => {
   };
 
   const handleLogout = () => {
-    const confirmLogout = window.confirm(
-      "Are you sure you want to log out?"
-    );
+    const confirmLogout = window.confirm("Are you sure you want to log out?");
 
     if (confirmLogout) {
       alert("Logged out successfully!");
@@ -60,7 +56,6 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-white">
-
       <header className="bg-slate-300 text-black px-5 py-5 rounded-b-3xl flex items-center justify-center">
         <h1 className="text-2xl md:text-3xl font-semibold text-center">
           My profile
@@ -68,11 +63,8 @@ const ProfilePage = () => {
       </header>
 
       <main className="max-w-2xl mx-auto px-5 py-8">
-
         <div className="flex flex-col items-center">
-
           <div className="relative">
-
             <img
               src={profileImage}
               alt="Profile"
@@ -96,7 +88,6 @@ const ProfilePage = () => {
               onChange={handleImageChange}
               className="hidden"
             />
-
           </div>
 
           <span className="mt-3 bg-blue-100 text-blue-600 px-6 py-1 rounded-full font-semibold">
@@ -115,13 +106,10 @@ const ProfilePage = () => {
               className="mt-3 text-center text-2xl border-b-2 border-purple-500 outline-none p-2 w-full max-w-md"
             />
           )}
-
         </div>
 
         <div className="mt-10 space-y-4">
-
           <div className="bg-gray-200 rounded-2xl p-4 flex items-center gap-4">
-
             <Mail className="text-gray-700 flex-shrink-0" />
 
             {isEditing ? (
@@ -132,15 +120,11 @@ const ProfilePage = () => {
                 className="bg-transparent outline-none w-full text-lg text-gray-700"
               />
             ) : (
-              <span className="text-lg text-gray-700 break-all">
-                {email}
-              </span>
+              <span className="text-lg text-gray-700 break-all">{email}</span>
             )}
-
           </div>
 
           <div className="bg-gray-200 rounded-2xl p-4 flex items-center gap-4">
-
             <User className="text-gray-700 flex-shrink-0" />
 
             {isEditing ? (
@@ -155,11 +139,9 @@ const ProfilePage = () => {
                 Student ID: {studentId}
               </span>
             )}
-
           </div>
 
           <div className="bg-gray-200 rounded-2xl p-4 flex items-center gap-4">
-
             <Calendar className="text-gray-700 flex-shrink-0" />
 
             {isEditing ? (
@@ -174,17 +156,11 @@ const ProfilePage = () => {
                 Join date: {joinDate}
               </span>
             )}
-
           </div>
-
         </div>
 
-        
-
         {!isEditing ? (
-
           <div className="flex flex-col sm:flex-row gap-5 justify-between mt-16">
-
             {/* Edit Profile */}
             <button
               type="button"
@@ -204,13 +180,9 @@ const ProfilePage = () => {
               <LogOut size={20} />
               Log out
             </button>
-
           </div>
-
         ) : (
-
           <div className="flex flex-col sm:flex-row gap-5 justify-between mt-16">
-
             <button
               type="button"
               onClick={handleSave}
@@ -228,11 +200,8 @@ const ProfilePage = () => {
               <X size={20} />
               Cancel
             </button>
-
           </div>
-
         )}
-
       </main>
     </div>
   );

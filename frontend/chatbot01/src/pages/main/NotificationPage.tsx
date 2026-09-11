@@ -14,7 +14,6 @@ const NotificationPage: React.FC = () => {
     <div className="min-h-screen bg-gray-100 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-4xl">
 
-        {/* Header */}
         <div className="mb-6 flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">
@@ -40,7 +39,6 @@ const NotificationPage: React.FC = () => {
           )}
         </div>
 
-        {/* Notification List */}
         <div className="space-y-3">
           {notifications.length === 0 ? (
             <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
@@ -67,7 +65,6 @@ const NotificationPage: React.FC = () => {
               >
                 <div className="flex items-start gap-4">
 
-                  {/* Icon */}
                   <div
                     className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl ${
                       notification.read
@@ -80,7 +77,6 @@ const NotificationPage: React.FC = () => {
                     {notification.type === "system" && "🔔"}
                   </div>
 
-                  {/* Content */}
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                       <h3
@@ -110,7 +106,6 @@ const NotificationPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Delete */}
                   <button
                     onClick={(event) => {
                       event.stopPropagation();

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import {
   User,
@@ -32,23 +31,14 @@ const SettingsPage = () => {
       }`}
     >
       <div className="mx-auto max-w-5xl">
-
-        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold md:text-4xl">
-            Settings
-          </h1>
+          <h1 className="text-3xl font-bold md:text-4xl">Settings</h1>
 
-          <p
-            className={`mt-2 ${
-              darkMode ? "text-gray-400" : "text-gray-500"
-            }`}
-          >
+          <p className={`mt-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
             Manage your AI chatbot preferences and account settings.
           </p>
         </div>
 
-        {/* Profile */}
         <section
           className={`mb-6 rounded-2xl p-6 shadow-sm ${
             darkMode ? "bg-gray-800" : "bg-white"
@@ -60,9 +50,7 @@ const SettingsPage = () => {
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold">
-                Profile
-              </h2>
+              <h2 className="text-xl font-semibold">Profile</h2>
 
               <p className="text-sm text-gray-500">
                 Manage your profile information.
@@ -70,9 +58,7 @@ const SettingsPage = () => {
             </div>
           </div>
 
-          <label className="mb-2 block text-sm font-medium">
-            Display Name
-          </label>
+          <label className="mb-2 block text-sm font-medium">Display Name</label>
 
           <input
             type="text"
@@ -83,7 +69,6 @@ const SettingsPage = () => {
           />
         </section>
 
-        {/* Appearance */}
         <section
           className={`mb-6 rounded-2xl p-6 shadow-sm ${
             darkMode ? "bg-gray-800" : "bg-white"
@@ -95,9 +80,7 @@ const SettingsPage = () => {
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold">
-                Appearance
-              </h2>
+              <h2 className="text-xl font-semibold">Appearance</h2>
 
               <p className="text-sm text-gray-500">
                 Customize how the chatbot looks.
@@ -107,9 +90,7 @@ const SettingsPage = () => {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">
-                Dark Mode
-              </p>
+              <p className="font-medium">Dark Mode</p>
 
               <p className="text-sm text-gray-500">
                 Switch between light and dark appearance.
@@ -136,7 +117,6 @@ const SettingsPage = () => {
           </div>
         </section>
 
-        {/* Notifications */}
         <section
           className={`mb-6 rounded-2xl p-6 shadow-sm ${
             darkMode ? "bg-gray-800" : "bg-white"
@@ -148,9 +128,7 @@ const SettingsPage = () => {
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold">
-                Notifications
-              </h2>
+              <h2 className="text-xl font-semibold">Notifications</h2>
 
               <p className="text-sm text-gray-500">
                 Control your notification preferences.
@@ -160,9 +138,7 @@ const SettingsPage = () => {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">
-                Enable Notifications
-              </p>
+              <p className="font-medium">Enable Notifications</p>
 
               <p className="text-sm text-gray-500">
                 Receive notifications about your chatbot.
@@ -183,7 +159,6 @@ const SettingsPage = () => {
           </div>
         </section>
 
-        {/* AI Model */}
         <section
           className={`mb-6 rounded-2xl p-6 shadow-sm ${
             darkMode ? "bg-gray-800" : "bg-white"
@@ -195,9 +170,7 @@ const SettingsPage = () => {
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold">
-                AI Model
-              </h2>
+              <h2 className="text-xl font-semibold">AI Model</h2>
 
               <p className="text-sm text-gray-500">
                 Select the AI model used for conversations.
@@ -205,9 +178,7 @@ const SettingsPage = () => {
             </div>
           </div>
 
-          <label className="mb-2 block text-sm font-medium">
-            AI Model
-          </label>
+          <label className="mb-2 block text-sm font-medium">AI Model</label>
 
           <select
             value={model}
@@ -220,7 +191,6 @@ const SettingsPage = () => {
           </select>
         </section>
 
-        {/* Language */}
         <section
           className={`mb-6 rounded-2xl p-6 shadow-sm ${
             darkMode ? "bg-gray-800" : "bg-white"
@@ -232,9 +202,7 @@ const SettingsPage = () => {
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold">
-                Language
-              </h2>
+              <h2 className="text-xl font-semibold">Language</h2>
 
               <p className="text-sm text-gray-500">
                 Choose your preferred language.
@@ -254,7 +222,6 @@ const SettingsPage = () => {
           </select>
         </section>
 
-        {/* Privacy */}
         <section
           className={`mb-6 rounded-2xl p-6 shadow-sm ${
             darkMode ? "bg-gray-800" : "bg-white"
@@ -266,9 +233,7 @@ const SettingsPage = () => {
             </div>
 
             <div className="flex-1">
-              <h2 className="text-xl font-semibold">
-                Privacy & Security
-              </h2>
+              <h2 className="text-xl font-semibold">Privacy & Security</h2>
 
               <p className="mt-1 text-sm text-gray-500">
                 Manage your privacy and security preferences.
@@ -284,7 +249,6 @@ const SettingsPage = () => {
           </div>
         </section>
 
-        {/* Data */}
         <section
           className={`mb-6 rounded-2xl p-6 shadow-sm ${
             darkMode ? "bg-gray-800" : "bg-white"
@@ -296,9 +260,7 @@ const SettingsPage = () => {
             </div>
 
             <div className="flex-1">
-              <h2 className="text-xl font-semibold">
-                Data Management
-              </h2>
+              <h2 className="text-xl font-semibold">Data Management</h2>
 
               <p className="mt-1 text-sm text-gray-500">
                 Manage your conversations and application data.
@@ -314,7 +276,6 @@ const SettingsPage = () => {
           </div>
         </section>
 
-        {/* Save */}
         <div className="mb-6 flex justify-end">
           <button
             type="button"
@@ -326,7 +287,6 @@ const SettingsPage = () => {
           </button>
         </div>
 
-        {/* Logout */}
         <section
           className={`rounded-2xl p-6 shadow-sm ${
             darkMode ? "bg-gray-800" : "bg-white"
@@ -338,9 +298,7 @@ const SettingsPage = () => {
             </div>
 
             <div className="flex-1">
-              <h2 className="font-semibold text-red-600">
-                Sign Out
-              </h2>
+              <h2 className="font-semibold text-red-600">Sign Out</h2>
 
               <p className="mt-1 text-sm text-gray-500">
                 Sign out of your AI chatbot account.
@@ -355,11 +313,9 @@ const SettingsPage = () => {
             </button>
           </div>
         </section>
-
       </div>
     </div>
   );
 };
 
 export default SettingsPage;
-

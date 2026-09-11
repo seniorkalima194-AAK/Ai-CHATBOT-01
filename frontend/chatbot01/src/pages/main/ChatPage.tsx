@@ -2,6 +2,9 @@ import { useState } from "react";
 import ChatWindow from "../../components/ChatWindow";
 import ChatInput from "../../components/ChatInput";
 import LoadingIndicator from "../../components/LoadingIndicator";
+import ChatbotSidebar from "../../components/Sidebar";
+import Navbar from "../../components/Navbar";
+
 
 interface MessageType {
   id: string;
@@ -46,7 +49,6 @@ const ChatPage = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] justify-between max-w-4xl mx-auto w-full">
 
-      {/* Chat messages */}
       <div className="flex-1 overflow-y-auto pr-2">
         <ChatWindow
           messages={messages}
@@ -56,18 +58,25 @@ const ChatPage = () => {
         {isLoading && (
           <div className="mt-4">
             <LoadingIndicator />
+            <ChatbotSidebar/>
           </div>
+
         )}
+        <div className="hidden md:block w-64 flex-shrink-0 border-gray-200">
+          <ChatbotSidebar />
+        </div>
       </div>
 
-      {/* Chat input */}
       <div className="mt-4 bg-white pb-4">
         <ChatInput
           inputValue={inputValue}
           setInputValue={setInputValue}
           onSendMessage={handleSendMessage}
         />
+      <Navbar/>
+        
       </div>
+
 
     </div>
   );
