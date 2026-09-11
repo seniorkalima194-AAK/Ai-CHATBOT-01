@@ -43,8 +43,8 @@ def fake_embedding_model(monkeypatch):
     again afterward would run on the fake (already-patched) function,
     which has no cache to clear.
     """
-    embeddings._get_model.cache_clear()
-    monkeypatch.setattr(embeddings, "_get_model", lambda: _FakeModel())
+    embeddings.get_embedding_model.cache_clear()
+    monkeypatch.setattr(embeddings, "get_embedding_model", lambda: _FakeModel())
     yield
 
 
@@ -86,7 +86,7 @@ def test_validate_dimension_raises_on_mismatch(monkeypatch):
     class WrongDimModel(_FakeModel):
         DIM = 768
 
-    monkeypatch.setattr(embeddings, "_get_model", lambda: WrongDimModel())
+    monkeypatch.setattr(embeddings, "get_embedding_model", lambda: WrongDimModel())
     with pytest.raises(ValueError, match="768-dim"):
         embeddings.validate_dimension()
 

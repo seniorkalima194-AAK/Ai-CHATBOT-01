@@ -1,3 +1,4 @@
+
 import {
   Bell,
   Menu,
@@ -9,13 +10,10 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useNotifications } from "../context/NotificationContext"; // Adjust path if needed
 
 const Navbar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
-  // Dynamically pull unreadCount from context instead of hardcoding 3
-  const { unreadCount } = useNotifications();
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const unreadNotifications = 3;
 
   return (
     <>
@@ -57,10 +55,12 @@ const Navbar = () => {
             >
               <Bell size={26} />
 
-              {/* Dynamic Notification Badge */}
-              {unreadCount > 0 && (
+              {/* Notification Badge */}
+              {unreadNotifications > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full border-2 border-gray-200">
-                  {unreadCount > 9 ? "9+" : unreadCount}
+                  {unreadNotifications > 9
+                    ? "9+"
+                    : unreadNotifications}
                 </span>
               )}
             </Link>
@@ -153,3 +153,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+

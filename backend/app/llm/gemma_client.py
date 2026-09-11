@@ -1,88 +1,42 @@
-# Placeholder: client wrapper for the Gemma LLM integration.
-from app.llm.ollama_client import generate as ollama_generate
+"""Model-agnostic chat wrapper for the configured Ollama model."""
+from __future__ import annotations
+
+import re
+
+from app.documents.cleaner import repair_text_encoding
+from app.llm.ollama_client import chat as ollama_chat
 
 
-_SPECIAL_TOKENS = (
-    "<start_of_turn>",
-    "<end_of_turn>",
-    "<start_of_turn>system",
-    "<start_of_turn>user",
-    "<start_of_turn>model",
-    "<eos>",
-    "<bos>",
+_CONTROL_TOKENS = re.compile(
+    r"</?(?:think|s>|start_of_turn|end_of_turn|bos|eos)[^>]*>",
+    flags=re.IGNORECASE,
 )
+_THINKING_BLOCK = re.compile(r"<think>.*?</think>", flags=re.IGNORECASE | re.DOTALL)
 
-
-def _build_prompt(system_prompt: str, user_prompt: str) -> str:
-    """Build a Gemma chat prompt using system and user roles."""
-    return (
-        f"<start_of_turn>system\n"
-        f"{system_prompt.strip()}"
-        f"<end_of_turn>\n"
-        f"<start_of_turn>user\n"
-        f"{user_prompt.strip()}"
-        f"<end_of_turn>\n"
-        f"<start_of_turn>model\n"
-    )
 
 def _clean_response(text: str) -> str:
-    """Remove leftover Gemma role markers and special tokens."""
-    cleaned = text
-
-    # Remove complete role markers first.
-    role_markers = (
-        "<start_of_turn>system",
-        "<start_of_turn>user",
-        "<start_of_turn>model",
-        "<end_of_turn>",
-    )
-
-    for marker in role_markers:
-        cleaned = cleaned.replace(marker, "")
-
-    # Remove remaining special tokens.
-    special_tokens = (
-        "<start_of_turn>",
-        "<eos>",
-        "<bos>",
-    )
-
-    for token in special_tokens:
-        cleaned = cleaned.replace(token, "")
-
-    # Remove leftover role labels.
+    """Remove accidental control tokens while preserving readable paragraphs."""
+    cleaned = _THINKING_BLOCK.sub("", text or "")
+    cleaned = _CONTROL_TOKENS.sub("", cleaned)
     lines = cleaned.splitlines()
-
-    if lines and lines[0].strip().lower() in {
-        "system",
-        "user",
-        "model",
-        "assistant",
-    }:
-        lines = lines[1:]
-
-    return "\n".join(lines).strip()
+    if lines and lines[0].strip().lower() in {"assistant", "model"}:
+        cleaned = "\n".join(lines[1:])
+    else:
+        cleaned = re.sub(
+            r"^\s*(?:assistant|model)\s*:\s*", "", cleaned, flags=re.I
+        )
+    return repair_text_encoding(cleaned).strip()
 
 
 def generate(system_prompt: str, user_prompt: str) -> str:
-    """
-    Generate a clean response from the configured Gemma model.
-
-    Args:
-        system_prompt: Instructions describing the assistant's behavior.
-        user_prompt: User's actual request.
-
-    Returns:
-        Clean plain-text model response.
-    """
-    prompt = _build_prompt(
-        system_prompt=system_prompt,
-        user_prompt=user_prompt,
+    """Return a clean student-facing answer using Ollama's native chat format."""
+    response = ollama_chat(
+        [
+            {"role": "system", "content": system_prompt.strip()},
+            {"role": "user", "content": user_prompt.strip()},
+        ]
     )
-
-    response = ollama_generate(
-        prompt,
-        stop=["<end_of_turn>"],
-        )
-
-    return _clean_response(response)
+    cleaned = _clean_response(response)
+    if not cleaned:
+        return "Sorry, I couldn't generate a readable answer. Please try again."
+    return cleaned

@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 import { useState } from "react";
+=======
+
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
 import {
   User,
   Palette,
@@ -11,7 +16,20 @@ import {
   Moon,
   Sun,
   Save,
+  FileUp,
+  LoaderCircle,
+  RefreshCw,
+  FileText,
+  Trash2,
 } from "lucide-react";
+import {
+  deleteUploadedTextbook,
+  getDocumentStatus,
+  getUploadedTextbooks,
+  uploadTextbooks,
+  type DocumentStatus,
+  type UploadedTextbook,
+} from "../services/chatService";
 
 const SettingsPage = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -19,6 +37,82 @@ const SettingsPage = () => {
   const [language, setLanguage] = useState("English");
   const [model, setModel] = useState("Default AI");
   const [name, setName] = useState("");
+  const [bookStatus, setBookStatus] = useState<DocumentStatus | null>(null);
+  const [uploadedBooks, setUploadedBooks] = useState<UploadedTextbook[]>([]);
+  const [bookMessage, setBookMessage] = useState("");
+  const [bookError, setBookError] = useState("");
+  const [isLoadingBooks, setIsLoadingBooks] = useState(false);
+  const [deletingBook, setDeletingBook] = useState<string | null>(null);
+  const bookInputRef = useRef<HTMLInputElement>(null);
+
+  const refreshBookLibrary = async () => {
+    try {
+      setBookError("");
+      const [status, uploads] = await Promise.all([
+        getDocumentStatus(),
+        getUploadedTextbooks(),
+      ]);
+      setBookStatus(status);
+      setUploadedBooks(uploads);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to reach the book library.";
+      setBookError(`Book library is unavailable: ${message}`);
+    }
+  };
+
+  useEffect(() => {
+    void refreshBookLibrary();
+  }, []);
+
+  const handleBookSelection = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (files.length === 0) return;
+
+    setIsLoadingBooks(true);
+    setBookError("");
+    setBookMessage("");
+    try {
+      const results = await uploadTextbooks(files);
+      const indexed = results.filter((result) => result.status === "indexed");
+      const failed = results.filter((result) => result.status === "failed");
+      const passages = indexed.reduce((total, result) => total + result.chunks_indexed, 0);
+      setBookMessage(
+        `${indexed.length} book${indexed.length === 1 ? "" : "s"} ready for questions (${passages} searchable passages).${
+          failed.length ? ` ${failed.length} PDF${failed.length === 1 ? " could" : "s could"} not be read.` : ""
+        }`,
+      );
+      await refreshBookLibrary();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to upload the selected PDF.";
+      setBookError(`Upload failed: ${message}`);
+    } finally {
+      setIsLoadingBooks(false);
+    }
+  };
+
+  const handleDeleteUploadedBook = async (book: UploadedTextbook) => {
+    const confirmed = window.confirm(
+      `Remove "${book.filename}"? The AI will no longer use information from this PDF.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingBook(book.filename);
+    setBookError("");
+    setBookMessage("");
+    try {
+      const result = await deleteUploadedTextbook(book.filename);
+      setBookMessage(
+        `${book.filename} was removed from this device and ${result.chunks_removed} searchable passage${result.chunks_removed === 1 ? "" : "s"}.`,
+      );
+      await refreshBookLibrary();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to remove the uploaded PDF.";
+      setBookError(`Could not remove ${book.filename}: ${message}`);
+    } finally {
+      setDeletingBook(null);
+    }
+  };
 
   const handleSave = () => {
     alert("Settings saved successfully!");
@@ -69,6 +163,114 @@ const SettingsPage = () => {
           />
         </section>
 
+<<<<<<< HEAD
+=======
+        {/* Book library */}
+        <section
+          className={`mb-6 rounded-2xl p-6 shadow-sm ${
+            darkMode ? "bg-gray-800" : "bg-white"
+          }`}
+        >
+          <div className="mb-5 flex items-center gap-3">
+            <div className="rounded-xl bg-gray-100 p-3 text-gray-700">
+              <Database size={22} />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold">Your book library</h2>
+              <p className="text-sm text-gray-500">
+                Add PDFs that the AI can use when answering your questions.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+            <p>
+              In this local installation, uploaded books are copied only to this computer&apos;s
+              <code className="mx-1 rounded bg-gray-200 px-1 py-0.5 text-gray-800">backend/Books/uploads</code>
+              folder and indexed locally. The original PDF remains in the location you selected.
+            </p>
+            {bookStatus && (
+              <p className="mt-3 font-medium text-gray-800">
+                {bookStatus.indexed_files} of {bookStatus.pdf_files} book{bookStatus.pdf_files === 1 ? "" : "s"} ready · {bookStatus.chunks} searchable passages
+              </p>
+            )}
+          </div>
+
+          <input
+            ref={bookInputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            multiple
+            className="hidden"
+            onChange={handleBookSelection}
+          />
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => bookInputRef.current?.click()}
+              disabled={isLoadingBooks}
+              className="flex items-center gap-2 rounded-xl bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isLoadingBooks ? <LoaderCircle size={18} className="animate-spin" /> : <FileUp size={18} />}
+              {isLoadingBooks ? "Uploading book..." : "Upload book"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void refreshBookLibrary()}
+              disabled={isLoadingBooks}
+              className="flex items-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-medium transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <RefreshCw size={18} />
+              Refresh library
+            </button>
+          </div>
+
+          <div className="mt-5 border-t border-gray-200 pt-4">
+            <h3 className="font-medium">PDFs uploaded by you</h3>
+            {uploadedBooks.length === 0 ? (
+              <p className="mt-2 text-sm text-gray-500">No PDFs have been uploaded from this device yet.</p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {uploadedBooks.map((book) => (
+                  <li
+                    key={book.source}
+                    className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2"
+                  >
+                    <FileText size={18} className="shrink-0 text-gray-600" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-gray-800">{book.filename}</p>
+                      <p className="text-xs text-gray-500">
+                        {book.status === "indexed"
+                          ? `${book.chunks_indexed} searchable passage${book.chunks_indexed === 1 ? "" : "s"}`
+                          : book.status}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteUploadedBook(book)}
+                      disabled={deletingBook !== null || isLoadingBooks}
+                      className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label={`Remove ${book.filename}`}
+                    >
+                      {deletingBook === book.filename ? <LoaderCircle size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {bookMessage && <p className="mt-3 text-sm text-green-700">{bookMessage}</p>}
+          {bookError && <p className="mt-3 text-sm text-red-600">{bookError}</p>}
+          <p className="mt-4 text-xs text-gray-500">
+            Teachers can also copy many PDFs directly into <code>backend/Books</code>; the running backend finds new or changed files automatically.
+          </p>
+        </section>
+
+        {/* Appearance */}
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
         <section
           className={`mb-6 rounded-2xl p-6 shadow-sm ${
             darkMode ? "bg-gray-800" : "bg-white"

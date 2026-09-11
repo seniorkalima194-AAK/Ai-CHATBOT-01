@@ -1,0 +1,81 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api/v1
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma4:latest}
+      ENVIRONMENT: production
+      # The frontend reaches this service through Nginx, so browser API calls
+      # are same-origin. These origins support direct API development too.
+      CORS_ORIGINS: '["http://localhost:${FRONTEND_PORT:-5173}","http://127.0.0.1:${FRONTEND_PORT:-5173}"]'
+      HF_HOME: /models/huggingface
+    depends_on:
+      ollama-init:
+        condition: service_completed_successfully
+    volumes:
+      # PDF textbooks and uploads remain in the checked-out Books folder.
+      - ./backend/Books:/app/Books
+      # Index, import manifest, and embedding cache persist across restarts.
+      - chatbot_data:/app/data
+      - embedding_models:/models
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
+
+  # Pulls the configured local model once. Existing model files in the volume
+  # are reused, so later starts do not download it again.
+  ollama-init:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma4:latest}
+    # The image entrypoint is the `ollama` binary, so override it to execute
+    # a shell command against the already-running ollama service.
+    entrypoint: ["/bin/sh", "-c"]
+    command: 'ollama pull "$${OLLAMA_MODEL}"'
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  chatbot_data:
+  embedding_models:
+  ollama_models:

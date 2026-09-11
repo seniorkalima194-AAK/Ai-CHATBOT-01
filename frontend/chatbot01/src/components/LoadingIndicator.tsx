@@ -1,6 +1,6 @@
-
 const LoadingIndicator = () => {
   return (
+<<<<<<< HEAD
     <div
       style={{
         display: "flex",
@@ -61,17 +61,26 @@ const LoadingIndicator = () => {
       <span style={{ fontSize: "14px", fontWeight: 600, letterSpacing: "0.025em", color: "#000000" }}>
         AI is thinking...
       </span>
+=======
+    <div className="flex items-center gap-2 text-gray-500">
 
-      <style>{`
-        @keyframes infinityDashSlow {
-          0% {
-            stroke-dashoffset: 220;
-          }
-          100% {
-            stroke-dashoffset: 0;
-          }
-        }
-      `}</style>
+      <div className="flex gap-1">
+        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+
+        <span
+          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+          style={{ animationDelay: "0.15s" }}
+        ></span>
+
+        <span
+          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+          style={{ animationDelay: "0.3s" }}
+        ></span>
+      </div>
+
+      <span>AI is thinking...</span>
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
+
     </div>
   );
 };
