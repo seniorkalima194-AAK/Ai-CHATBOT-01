@@ -20,7 +20,7 @@ const ProfilePage = () => {
 
   // Profile picture
   const [profileImage, setProfileImage] = useState(
-    "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+    "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
   );
 
   // Edit mode
@@ -34,10 +34,14 @@ const ProfilePage = () => {
     fileInputRef.current?.click();
   };
 
+<<<<<<< HEAD
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+=======
   // Handle uploaded image
   const handleImageChange = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
     const file = event.target.files?.[0];
 
     if (file) {
@@ -58,6 +62,20 @@ const ProfilePage = () => {
     setIsEditing(false);
   };
 
+<<<<<<< HEAD
+  const handleLogout = () => {
+    const confirmLogout = window.confirm("Are you sure you want to log out?");
+
+    if (confirmLogout) {
+      alert("Logged out successfully!");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-white">
+      <header className="bg-slate-300 text-black px-5 py-5 rounded-b-3xl flex items-center justify-center">
+        <h1 className="text-2xl md:text-3xl font-semibold text-center">
+=======
   return (
     <div className="min-h-screen bg-white">
 
@@ -69,6 +87,7 @@ const ProfilePage = () => {
         </button>
 
         <h1 className="text-2xl md:text-3xl font-semibold">
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
           My profile
         </h1>
 
@@ -76,12 +95,13 @@ const ProfilePage = () => {
 
       {/* ================= PROFILE ================= */}
       <main className="max-w-2xl mx-auto px-5 py-8">
+<<<<<<< HEAD
+=======
 
         {/* Profile Picture */}
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
         <div className="flex flex-col items-center">
-
           <div className="relative">
-
             <img
               src={profileImage}
               alt="Profile"
@@ -106,7 +126,6 @@ const ProfilePage = () => {
               onChange={handleImageChange}
               className="hidden"
             />
-
           </div>
 
           {/* Role */}
@@ -127,17 +146,21 @@ const ProfilePage = () => {
               className="mt-3 text-center text-2xl border-b-2 border-purple-500 outline-none p-2"
             />
           )}
-
         </div>
 
         {/* ================= PROFILE INFORMATION ================= */}
 
         <div className="mt-10 space-y-4">
+<<<<<<< HEAD
+          <div className="bg-gray-200 rounded-2xl p-4 flex items-center gap-4">
+            <Mail className="text-gray-700 flex-shrink-0" />
+=======
 
           {/* Email */}
           <div className="bg-gray-200 rounded-2xl p-4 flex items-center gap-4">
 
             <Mail className="text-gray-700" />
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
 
             {isEditing ? (
               <input
@@ -147,17 +170,18 @@ const ProfilePage = () => {
                 className="bg-transparent outline-none w-full text-lg"
               />
             ) : (
-              <span className="text-lg text-gray-700 break-all">
-                {email}
-              </span>
+              <span className="text-lg text-gray-700 break-all">{email}</span>
             )}
-
           </div>
 
           {/* Student ID */}
           <div className="bg-gray-200 rounded-2xl p-4 flex items-center gap-4">
+<<<<<<< HEAD
+            <User className="text-gray-700 flex-shrink-0" />
+=======
 
             <User className="text-gray-700" />
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
 
             {isEditing ? (
               <input
@@ -171,13 +195,16 @@ const ProfilePage = () => {
                 Student ID: {studentId}
               </span>
             )}
-
           </div>
 
           {/* Join Date */}
           <div className="bg-gray-200 rounded-2xl p-4 flex items-center gap-4">
+<<<<<<< HEAD
+            <Calendar className="text-gray-700 flex-shrink-0" />
+=======
 
             <Calendar className="text-gray-700" />
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
 
             {isEditing ? (
               <input
@@ -191,17 +218,21 @@ const ProfilePage = () => {
                 Join date: {joinDate}
               </span>
             )}
-
           </div>
-
         </div>
 
+<<<<<<< HEAD
+=======
         {/* ================= BUTTONS ================= */}
 
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
         {!isEditing ? (
-
           <div className="flex flex-col sm:flex-row gap-5 justify-between mt-16">
+<<<<<<< HEAD
+            {/* Edit Profile */}
+=======
 
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
             <button
               onClick={() => setIsEditing(true)}
               className="flex items-center justify-center gap-2 border-2 border-blue-400 text-blue-500 px-8 py-3 rounded-full font-semibold text-lg hover:bg-blue-50"
@@ -216,14 +247,14 @@ const ProfilePage = () => {
               <LogOut size={20} />
               Log out
             </button>
-
           </div>
-
         ) : (
-
           <div className="flex flex-col sm:flex-row gap-5 justify-between mt-16">
+<<<<<<< HEAD
+=======
 
             {/* Save */}
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
             <button
               onClick={handleSave}
               className="flex items-center justify-center gap-2 bg-blue-500 text-white px-8 py-3 rounded-full font-semibold text-lg hover:bg-blue-600"
@@ -240,11 +271,8 @@ const ProfilePage = () => {
               <X size={20} />
               Cancel
             </button>
-
           </div>
-
         )}
-
       </main>
 
     </div>

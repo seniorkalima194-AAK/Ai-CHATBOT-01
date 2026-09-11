@@ -1,3 +1,11 @@
+<<<<<<< HEAD
+import React, { useState } from "react";
+import {
+  MessageSquare,
+  Plus,
+  ChevronLeft,
+  Trash2,
+=======
 import { useState } from "react";
 import { 
   MessageSquare, 
@@ -6,15 +14,28 @@ import {
   Menu, 
   Trash2, 
   Settings, 
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
   ExternalLink,
   Search,
-  X 
+  X,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
+<<<<<<< HEAD
+interface ChatItem {
+  id: string;
+  title: string;
+  path: string;
+}
+
+const ChatbotSidebar: React.FC = () => {
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+=======
 const ChatGPTSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState(""); // Track search input text
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
   const location = useLocation();
 
   const chatHistory = [
@@ -24,16 +45,47 @@ const ChatGPTSidebar = () => {
     { id: "4", title: "Python API Data Parsing", path: "/c/4" },
   ];
 
+<<<<<<< HEAD
+  const handleDeleteChat = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    chat: ChatItem,
+  ): void => {
+    // Stop the click event from triggering Link navigation
+    e.stopPropagation();
+    e.preventDefault();
+
+    setChatHistory((prev) => prev.filter((item) => item.id !== chat.id));
+
+    if (location.pathname === chat.path) {
+      navigate("/");
+    }
+  };
+
+=======
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
   const filteredHistory = chatHistory.filter((chat) =>
-    chat.title.toLowerCase().includes(searchQuery.toLowerCase())
+    chat.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
-    <aside 
+    <aside
       className={`fixed top-0 left-0 h-screen bg-white text-gray-900
       transition-all duration-300 z-50 flex flex-col justify-between border-r border-[#2f2f2f]
       ${isCollapsed ? "w-0 md:w-16" : "w-64"}`}
     >
+<<<<<<< HEAD
+      <div
+        className={`flex flex-col h-full w-full ${isCollapsed ? "hidden md:flex" : "flex"}`}
+      >
+        {/* Top Action Header */}
+        <div className="p-3.5 flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2">
+            {!isCollapsed && (
+              <Link
+                to={"/"}
+                className="flex-1 flex items-center justify-between px-3 py-2 border border-[#2f2f2f] rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+              >
+=======
       {isCollapsed && (
         <button
           onClick={() => setIsCollapsed(false)}
@@ -50,6 +102,7 @@ const ChatGPTSidebar = () => {
           <div className="flex items-center justify-between gap-2">
             {!isCollapsed && (
               <Link to={'/'} className="flex-1 flex items-center justify-between px-3 py-2 border border-[#2f2f2f] rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
                 <span className="flex items-center gap-2">
                   <MessageSquare size={16} className="text-gray-900" />
                   New chat
@@ -57,9 +110,9 @@ const ChatGPTSidebar = () => {
                 <Plus size={16} className="text-gray-400" />
               </Link>
             )}
-            
+
             {!isCollapsed && (
-              <button 
+              <button
                 onClick={() => setIsCollapsed(true)}
                 className="p-2 rounded-lg border border-[#2f2f2f] text-gray-400 hover:text-gray-900 hover:bg-gray-200 transition-colors"
                 aria-label="Collapse Sidebar"
@@ -76,11 +129,17 @@ const ChatGPTSidebar = () => {
                 type="text"
                 placeholder="Search history..."
                 value={searchQuery}
+<<<<<<< HEAD
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setSearchQuery(e.target.value)
+                }
+=======
                 onChange={(e) => setSearchQuery(e.target.value)}
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
                 className="w-full pl-9 pr-8 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-gray-900 focus:bg-white text-gray-900 transition-all"
               />
               {searchQuery && (
-                <button 
+                <button
                   onClick={() => setSearchQuery("")}
                   className="absolute right-2.5 text-gray-400 hover:text-gray-600"
                 >
@@ -100,17 +159,39 @@ const ChatGPTSidebar = () => {
                   filteredHistory.map((chat) => {
                     const isActive = location.pathname === chat.path;
                     return (
-                      <div 
+                      <div
                         key={chat.id}
                         className={`group relative flex items-center justify-between rounded-lg text-sm px-3 py-2 transition-colors cursor-pointer
                         ${isActive ? "bg-gray-900" : "hover:bg-gray-800"}`}
                       >
+<<<<<<< HEAD
+                        <Link
+                          to={chat.path}
+                          className="flex items-center gap-2.5 truncate w-full pr-8"
+                        >
+                          <MessageSquare
+                            size={16}
+                            className={`flex-shrink-0 ${isActive ? "text-white" : "text-gray-600 group-hover:text-gray-900"}`}
+                          />
+                          <span className="truncate text-[13px]">
+                            {chat.title}
+                          </span>
+                        </Link>
+
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteChat(e, chat)}
+                          className="absolute right-2 z-10 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity"
+                          title="Delete Chat"
+                        >
+=======
                         <Link to={chat.path} className="flex items-center gap-2.5 truncate w-full pr-6 text-gray-950">
                           <MessageSquare size={16} className={`flex-shrink-0 ${isActive ? "text-white" : "text-gray-900 group-hover:text-white"}`} />
                           <span className={`truncate text-[13px] ${isActive ? "text-white" : "text-black group-hover:text-white"}`}>{chat.title}</span>
                         </Link>
                         
                         <button className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400 transition-opacity">
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -151,10 +232,13 @@ const ChatGPTSidebar = () => {
             </div>
           )}
         </div>
-
       </div>
     </aside>
   );
 };
 
+<<<<<<< HEAD
+export default ChatbotSidebar;
+=======
 export default ChatGPTSidebar;
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f

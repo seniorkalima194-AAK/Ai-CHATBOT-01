@@ -1,4 +1,13 @@
 import { useState } from "react";
+<<<<<<< HEAD
+import ChatWindow from "../../components/ChatWindow";
+import ChatInput from "../../components/ChatInput";
+import LoadingIndicator from "../../components/LoadingIndicator";
+import ChatbotSidebar from "../../components/Sidebar";
+import Navbar from "../../components/Navbar";
+
+=======
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
 
 import ChatInput from "../../components/ChatInput";
 import ChatWindow from "../../components/ChatWindow";
@@ -75,10 +84,31 @@ const ChatPage = () => {
   };
 
   return (
+<<<<<<< HEAD
+    <div className="flex flex-col h-[calc(100vh-8rem)] justify-between max-w-4xl mx-auto w-full">
+
+      <div className="flex-1 overflow-y-auto pr-2">
+        <ChatWindow
+          messages={messages}
+          onButtonClick={handleButtonClick}
+        />
+
+        {isLoading && (
+          <div className="mt-4">
+            <LoadingIndicator />
+            <ChatbotSidebar/>
+          </div>
+
+        )}
+        <div className="hidden md:block w-64 flex-shrink-0 border-gray-200">
+          <ChatbotSidebar />
+        </div>
+=======
     <div className="mx-auto flex h-[calc(100vh-8rem)] w-full max-w-4xl flex-col justify-between">
       <div className="flex-1 overflow-y-auto pr-2">
         <ChatWindow messages={messages} onButtonClick={setInputValue} />
         {isLoading && <div className="mt-4"><LoadingIndicator /></div>}
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
       </div>
 
       <div className="mt-4 bg-white pb-4">
@@ -89,7 +119,14 @@ const ChatPage = () => {
           onUploadTextbooks={handleUploadTextbooks}
           disabled={isLoading}
         />
+      <Navbar/>
+        
       </div>
+<<<<<<< HEAD
+
+
+=======
+>>>>>>> 32a8a1eb78db1ff0ffe8b7c9e503ca83704b020f
     </div>
   );
 };
